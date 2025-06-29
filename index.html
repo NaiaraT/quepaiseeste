@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Que país é esse?</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+        .game-container {
+            background-color: #ffffff;
+            border-radius: 1.5rem; /* Mais arredondado */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            max-width: 90%;
+            width: 500px; /* Largura fixa para desktop, mas responsiva */
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem; /* AJUSTADO: Era 1.5rem, agora 1rem para menos espaço */
+        }
+        .flag-display {
+            background-color: #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 150px;
+            overflow: hidden; /* Garante que a imagem não vaze */
+        }
+        .flag-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+        }
+        .hint-text {
+            background-color: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            text-align: left;
+            font-size: 0.95rem;
+            color: #4a5568;
+            opacity: 0; /* Começa invisível */
+            transition: opacity 0.5s ease-in-out;
+            min-height: 50px; /* Para evitar saltos de layout quando a dica é vazia */
+            display: flex;
+            align-items: center;
+        }
+        .hint-text.visible {
+            opacity: 1;
+        }
+        .curiosity-text {
+            background-color: #dbeafe; /* blue-100 */
+            border-left: 4px solid #3b82f6;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            text-align: left;
+            font-size: 0.95rem;
+            color: #1e3a8a; /* blue-900 */
+            opacity: 0; /* Começa invisível */
+            transition: opacity 0.5s ease-in-out;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+        }
+        .curiosity-text.visible {
+            opacity: 1;
+        }
+        .button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem; /* Mais arredondado */
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .button:hover {
+            transform: translateY(-2px);
+        }
+        .button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .button-primary {
+            background-color: #3b82f6;
+            color: #ffffff;
+        }
+        .button-primary:hover {
+            background-color: #2563eb;
+        }
+        .button-secondary {
+            background-color: #cbd5e0;
+            color: #2d3748;
+        }
+        .button-secondary:hover {
+            background-color: #a0aec0;
+        }
+        .button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .input-field {
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            border: 2px solid #e2e8f0;
+            width: calc(100% - 2rem); /* Ajusta para padding */
+            font-size: 1rem;
+            text-align: center;
+            transition: border-color 0.2s;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        }
+        .feedback-message {
+            font-weight: 600;
+            margin-top: 0.5rem; /* Ajustado para cima */
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out, background-color 0.5s ease-in-out;
+        }
+        .feedback-message.visible {
+            opacity: 1;
+        }
+        .feedback-correct {
+            background-color: #a7f3d0; /* green-200 */
+            color: #065f46; /* green-800 */
+        }
+        .feedback-incorrect {
+            background-color: #fee2e2; /* red-200 */
+            color: #991b1b; /* red-800 */
+        }
+        .game-status {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .game-container {
+                padding: 1rem;
+                gap: 1rem;
+            }
+            .button-group {
+                flex-direction: column;
+            }
+            .button-group button {
+                width: 100%;
+            }
+            .hint-text, .curiosity-text {
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="text-3xl font-bold text-gray-800 mb-4">Que país é esse?</h1>
+        <p id="game-status" class="game-status">Bandeira <span id="current-flag-number">1</span> de <span id="total-flags-number">0</span></p>
+
+        <div class="flag-display">
+            <img id="flag-image" class="flag-image" src="" alt="Bandeira do País">
+        </div>
+
+        <div id="hint-display" class="hint-text">
+            Sua dica aparecerá aqui.
+        </div>
+
+        <div id="curiosity-display" class="curiosity-text">
+            Você sabia?
+        </div>
+
+        <input type="text" id="guess-input" class="input-field" placeholder="Digite o nome do país aqui...">
+
+        <div class="flex flex-col sm:flex-row justify-center gap-4 mt-4">
+            <button id="hint1-btn" class="button button-secondary">Dica 1 (Difícil)</button>
+            <button id="hint2-btn" class="button button-secondary">Dica 2 (Média)</button>
+            <button id="hint3-btn" class="button button-secondary">Dica 3 (Simples)</button>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-center gap-4 mt-4">
+            <button id="guess-btn" class="button button-primary">Adivinhar</button>
+            <button id="next-btn" class="button button-secondary">Próxima Bandeira</button>
+        </div>
+
+        <div id="feedback-message" class="feedback-message"></div>
+    </div>
+
+    <script>
+        // --- DADOS DOS PAÍSES MEMBROS DA ONU ---
+        // Esta lista contém os 193 países membros da ONU.
+        // As dicas para os primeiros países são mais detalhadas.
+        // Para os países restantes, as dicas são genéricas para preencher o espaço.
+        // Você precisará pesquisar e adicionar dicas mais precisas e graduais para cada um.
+        const all_un_member_states = [
+            // Países com dicas e curiosidades mais detalhadas (exemplos)
+            { "name": "Brasil", "code": "br", "hints": ["É o único país de língua portuguesa nas Américas.", "Sua capital é Brasília, e é famoso pelo Cristo Redentor.", "Localiza-se na América do Sul e é conhecido pelo futebol e pela Amazônia."], "curiosity": ["Você sabia? As 27 estrelas na bandeira do Brasil representam os estados e o Distrito Federal. Elas estão dispostas como no céu do Rio de Janeiro em 15 de novembro de 1889!", "Você sabia? A frase 'Ordem e Progresso' na bandeira brasileira é inspirada no positivismo de Auguste Comte."]},
+            { "name": "Canadá", "code": "ca", "hints": ["Possui a maior linha costeira do mundo e o símbolo da folha de bordo.", "Sua capital é Ottawa e é bilíngue, com inglês e francês como idiomas oficiais.", "Está localizado na América do Norte, ao norte dos Estados Unidos."], "curiosity": ["Você sabia? A folha de bordo (maple leaf) na bandeira do Canadá tem 11 pontas, e não 13 como muitos pensam!", "Você sabia? As cores vermelha e branca foram declaradas as cores oficiais do Canadá pelo Rei George V em 1921."]},
+            { "name": "Japão", "code": "jp", "hints": ["É um arquipélago vulcânico no Oceano Pacífico, com a montanha Fuji.", "Sua capital é Tóquio, e é a terra do sushi e dos samurais.", "Localiza-se na Ásia e é conhecido por sua tecnologia avançada e cultura milenar."], "curiosity": ["Você sabia? O círculo vermelho no centro da bandeira do Japão representa Amaterasu, a deusa do sol e ancestral da família imperial japonesa.", "Você sabia? A bandeira é oficialmente chamada de 'Nisshoki' (bandeira do sol) ou 'Hinomaru' (disco do sol)."]},
+            { "name": "Egito", "code": "eg", "hints": ["Cerca de 95% de sua população vive a poucos quilômetros do Rio Nilo.", "Sua capital é Cairo, e é famoso pelas Pirâmides de Gizé e pela Esfinge.", "Localiza-se no nordeste da África e é um dos berços da civilização."], "curiosity": ["Você sabia? A águia de Saladino no centro da bandeira do Egito é um símbolo de autoridade e soberania do país.", "Você sabia? As cores pan-árabes (vermelho, branco e preto) na bandeira do Egito simbolizam a revolução, o futuro brilhante e a era obscura do passado, respectivamente."]},
+            { "name": "Austrália", "code": "au", "hints": ["É o único continente-país do mundo e lar de criaturas únicas como o canguru.", "Sua capital é Canberra, e o Sydney Opera House é um de seus ícones.", "Localiza-se na Oceania e é conhecida por suas praias e o Outback."], "curiosity": ["Você sabia? A Constelação do Cruzeiro do Sul na bandeira australiana é composta por cinco estrelas, representando sua localização no Hemisfério Sul.", "Você sabia? A estrela de sete pontas abaixo da Union Jack é a Estrela da Commonwealth, representando os seis estados e os territórios do país."]},
+            { "name": "Alemanha", "code": "de", "hints": ["É o país com mais vizinhos na Europa.", "Sua capital é Berlim e é famosa pela Oktoberfest.", "Localiza-se na Europa e é conhecida por sua engenharia."], "curiosity": ["Você sabia? As cores da bandeira alemã (preto, vermelho e ouro) vêm dos uniformes dos Freikorps, voluntários que lutaram contra Napoleão no século XIX.", "Você sabia? A bandeira foi adotada como símbolo da Alemanha unificada em 1919 e reintroduzida em 1949."]},
+            { "name": "França", "code": "fr", "hints": ["País que abriga o museu do Louvre e a Torre Eiffel.", "Sua capital é Paris, um centro mundial de arte e moda.", "Localiza-se na Europa Ocidental e é conhecida por sua culinária."], "curiosity": ["Você sabia? A bandeira tricolor da França foi inspirada na Revolução Francesa e se tornou um símbolo de liberdade e igualdade.", "Você sabia? O azul e o vermelho são as cores tradicionais de Paris, e o branco é a cor da monarquia francesa. Juntos, simbolizam a união do povo com a monarquia constitucional."]},
+            { "name": "Índia", "code": "in", "hints": ["É o segundo país mais populoso do mundo e um berço de antigas civilizações.", "Sua capital é Nova Deli, e é famosa pelo Taj Mahal.", "Localiza-se na Ásia."], "curiosity": ["Você sabia? A roda Ashoka Chakra no centro da bandeira indiana simboliza a lei do dharma, progresso e movimento.", "Você sabia? As cores açafrão, branco e verde da bandeira indiana representam coragem e sacrifício, paz e verdade, e fé e cavalheirismo, respectivamente."]},
+            { "name": "Estados Unidos", "code": "us", "hints": ["É o terceiro maior país em área total e economia.", "Sua capital é Washington, D.C., e possui o Grand Canyon.", "Localiza-se na América do Norte."], "curiosity": ["Você sabia? As 13 listras na bandeira dos EUA representam as treze colônias originais que se tornaram os primeiros estados do país.", "Você sabia? As 50 estrelas representam os 50 estados atuais da união. A bandeira mais recente com 50 estrelas foi criada por um estudante de 17 anos em 1959."]},
+            { "name": "Reino Unido", "code": "gb", "hints": ["É uma ilha europeia com uma monarquia constitucional e o famoso Big Ben.", "Sua capital é Londres.", "Localiza-se na Europa e é conhecida por sua história e cultura."], "curiosity": ["Você sabia? A bandeira do Reino Unido, a 'Union Jack', é uma combinação das bandeiras da Inglaterra (Cruz de São Jorge), Escócia (Cruz de Santo André) e Irlanda do Norte (Cruz de São Patrício).", "Você sabia? É uma das poucas bandeiras nacionais que não possui seu próprio simbolismo para suas cores, que representam as bandeiras que a compõem."]},
+            { "name": "China", "code": "cn", "hints": ["É o país mais populoso do mundo e o quarto maior em área.", "Sua capital é Pequim, e é conhecida pela Grande Muralha.", "Localiza-se na Ásia."], "curiosity": ["Você sabia? A estrela maior na bandeira chinesa representa o Partido Comunista da China, e as quatro estrelas menores representam as quatro classes sociais sob a liderança do partido.", "Você sabia? A cor vermelha predominante na bandeira é a cor tradicional da revolução comunista."]},
+            { "name": "Rússia", "code": "ru", "hints": ["É o maior país do mundo em área, abrangendo a Europa Oriental e o norte da Ásia.", "Sua capital é Moscou.", "Localiza-se na Europa e Ásia."], "curiosity": ["Você sabia? As cores da bandeira russa (branco, azul e vermelho) são frequentemente interpretadas como pureza (branco), lealdade (azul) e energia/sacrifício (vermelho).", "Você sabia? A bandeira atual foi reintroduzida em 1991, após o colapso da União Soviética."]},
+            { "name": "África do Sul", "code": "za", "hints": ["É um país na ponta sul da África, com paisagens diversas e uma rica história.", "Tem três capitais: Pretória, Cidade do Cabo e Bloemfontein.", "Localiza-se na África Austral."], "curiosity": ["Você sabia? A bandeira da África do Sul é uma das poucas no mundo com seis cores, simbolizando a convergência de diversas culturas no país.", "Você sabia? A forma em Y na bandeira representa a convergência de diversas culturas do país, unidas em um único caminho para o futuro."]},
+            { "name": "México", "code": "mx", "hints": ["É um país da América do Norte conhecido por suas ruínas antigas e culinária vibrante.", "Sua capital é Cidade do México.", "Localiza-se na América do Norte."], "curiosity": ["Você sabia? O escudo na bandeira do México retrata uma águia dourada devorando uma cobra em cima de um cacto, lembrando uma lenda asteca sobre a fundação de Tenochtitlán.", "Você sabia? As cores da bandeira (verde, branco e vermelho) representam esperança, pureza e o sangue derramado pelos heróis nacionais."]},
+            { "name": "Espanha", "code": "es", "hints": ["É um país da Península Ibérica conhecido por sua cultura vibrante e rica história.", "Sua capital é Madri.", "Localiza-se na Europa."], "curiosity": ["Você sabia? As cores da bandeira espanhola, vermelho e amarelo ouro, são as cores tradicionais dos reinos de Castela e Aragão.", "Você sabia? O brasão de armas atual foi adotado em 1981 e inclui símbolos de vários reinos históricos da Espanha."]},
+            { "name": "Itália", "code": "it", "hints": ["É um país europeu conhecido por sua arte, moda, culinária e monumentos romanos.", "Sua capital é Roma.", "Localiza-se na Europa."], "curiosity": ["Você sabia? As cores da bandeira italiana (verde, branco e vermelho) representam as planícies e colinas, os picos nevados dos Alpes e o sangue derramado nas guerras de independência, respectivamente.", "Você sabia? O desenho da bandeira é inspirado no tricolor francês, mas com cores diferentes que simbolizam a paisagem italiana."]},
+            { "name": "Argentina", "code": "ar", "hints": ["É o segundo maior país da América do Sul.", "Sua capital é Buenos Aires, e é famoso pelo tango.", "Localiza-se na América do Sul."], "curiosity": ["Você sabia? O 'Sol de Maio' na bandeira argentina é um símbolo inca que representa o deus sol Inti.", "Você sabia? As cores azul-claro e branco representam o céu, as nuvens e as águas do Rio da Prata."]},
+            { "name": "Suíça", "code": "ch", "hints": ["É um país montanhoso da Europa Central, famoso por seus chocolates, queijos e bancos.", "Sua capital é Berna.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A bandeira da Suíça é uma das apenas duas bandeiras nacionais quadradas do mundo (a outra é o Vaticano).", "Você sabia? A cruz branca em um campo vermelho é um símbolo da Confederação Suíça desde o século XIV."]},
+            { "name": "Turquia", "code": "tr", "hints": ["É um país que se estende pela Europa e Ásia, com uma rica herança otomana.", "Sua capital é Ancara.", "Localiza-se na Eurásia."], "curiosity": ["Você sabia? A lua crescente e a estrela na bandeira turca são símbolos antigos do Islã, mas também têm raízes pré-islâmicas.", "Você sabia? A cor vermelha é associada ao Império Otomano e simboliza o sangue dos mártires."]},
+            { "name": "Coreia do Sul", "code": "kr", "hints": ["É uma nação do leste asiático conhecida por sua alta tecnologia e cultura pop.", "Sua capital é Seul.", "Localiza-se na Ásia Oriental."], "curiosity": ["Você sabia? O símbolo Taegeuk no centro da bandeira sul-coreana representa o equilíbrio do yin e yang, simbolizando o universo.", "Você sabia? Os quatro trigramas nos cantos representam os elementos universais: céu, terra, água e fogo."]},
+            { "name": "Suécia", "code": "se", "hints": ["É um país nórdico conhecido por suas paisagens, design e inovação.", "Sua capital é Estocolmo.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A cruz nórdica na bandeira sueca representa o cristianismo e é compartilhada por outras bandeiras escandinavas.", "Você sabia? Acredita-se que o design da bandeira seja inspirado no brasão de armas da Suécia, que contém três coroas douradas."]},
+            { "name": "Noruega", "code": "no", "hints": ["É um país nórdico conhecido por seus fiordes e paisagens deslumbrantes.", "Sua capital é Oslo.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A bandeira da Noruega é um 'derivado' da bandeira dinamarquesa (Dannebrog), com uma cruz nórdica adicionada em vermelho e azul.", "Você sabia? As cores vermelho, branco e azul são associadas à liberdade e independência, inspiradas nas bandeiras revolucionárias da França e dos EUA."]},
+            { "name": "Grécia", "code": "gr", "hints": ["É um país do sudeste da Europa com milhares de ilhas e uma história antiga.", "Sua capital é Atenas.", "Localiza-se na Europa."], "curiosity": ["Você sabia? As nove listras na bandeira grega são ditas para representar as nove sílabas da frase 'Liberdade ou Morte' (Eleftheria i Thanatos).", "Você sabia? A cruz branca no canto superior esquerdo simboliza a ortodoxia grega, a religião predominante no país."]},
+            { "name": "Polônia", "code": "pl", "hints": ["É um país da Europa Central com uma rica história e paisagens variadas.", "Sua capital é Varsóvia.", "Localiza-se na Europa."], "curiosity": ["Você sabia? As cores branca e vermelha da bandeira polonesa são as cores nacionais do país e derivam do brasão de armas da Polônia.", "Você sabia? O branco simboliza a pureza e o vermelho, a coragem e a paixão."]},
+            { "name": "Portugal", "code": "pt", "hints": ["É um país da Península Ibérica com uma rica história marítima e belas praias.", "Sua capital é Lisboa.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A esfera armilar na bandeira portuguesa simboliza os descobrimentos marítimos do país, e as cores verde e vermelho foram introduzidas com a República.", "Você sabia? As cores verde e vermelha substituíram o azul e branco monárquicos após a Revolução Republicana de 1910."]},
+            { "name": "Irlanda", "code": "ie", "hints": ["É uma ilha europeia conhecida por suas paisagens verdes exuberantes e castelos.", "Sua capital é Dublin.", "Localiza-se na Europa."], "curiosity": ["Você sabia? As cores da bandeira irlandesa (verde, branco e laranja) representam os católicos (verde), os protestantes (laranja) e a paz entre eles (branco).", "Você sabia? O verde simboliza a tradição gaélica e o laranja, os seguidores de Guilherme de Orange."]},
+            { "name": "Países Baixos", "code": "nl", "hints": ["É um país da Europa Ocidental conhecido por seus moinhos de vento, tulipas e canais.", "Sua capital é Amsterdã.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A bandeira dos Países Baixos é uma das mais antigas tricolores horizontais contínuas, e suas cores foram inspiração para muitas outras bandeiras nacionais.", "Você sabia? As cores vermelho, branco e azul são derivadas do estandarte do Príncipe de Orange."]},
+            { "name": "Bélgica", "code": "be", "hints": ["É conhecida por suas cidades medievais, cervejas e chocolates.", "Sua capital é Bruxelas.", "Localiza-se na Europa."], "curiosity": ["Você sabia? As cores da bandeira belga (preto, amarelo e vermelho) são as cores do Ducado de Brabante e foram adotadas durante a Revolução Belga de 1830.", "Você sabia? A bandeira é incomum por ter proporções 13:15, o que a torna quase quadrada."]},
+            { "name": "Nova Zelândia", "code": "nz", "hints": ["É um país insular no sudoeste do Oceano Pacífico, com paisagens diversas.", "Sua capital é Wellington.", "Localiza-se na Oceania."], "curiosity": ["Você sabia? As quatro estrelas vermelhas com bordas brancas na bandeira da Nova Zelândia representam a constelação do Cruzeiro do Sul, que é proeminente no céu noturno do país.", "Você sabia? A Union Jack no canto superior esquerdo reflete a herança colonial britânica."]},
+            { "name": "Cuba", "code": "cu", "hints": ["É uma nação insular caribenha conhecida por seus carros antigos e charutos.", "Sua capital é Havana.", "Localiza-se no Caribe."], "curiosity": ["Você sabia? O triângulo vermelho na bandeira de Cuba simboliza a igualdade e fraternidade, e as três estrelas representam a liberdade.", "Você sabia? As cinco listras azuis e brancas representam as cinco antigas divisões coloniais de Cuba."]},
+            { "name": "Tailândia", "code": "th", "hints": ["É um país do Sudeste Asiático conhecido por suas praias tropicais e templos budistas.", "Sua capital é Bangkok.", "Localiza-se no Sudeste Asiático."], "curiosity": ["Você sabia? As cores da bandeira da Tailândia (vermelho, branco e azul) representam a nação, a religião e a monarquia, respectivamente.", "Você sabia? A faixa azul central é mais larga que as outras, simbolizando a realeza."]},
+            { "name": "Vietnã", "code": "vn", "hints": ["É um país do Sudeste Asiático conhecido por suas praias, rios e pagodes budistas.", "Sua capital é Hanói.", "Localiza-se no Sudeste Asiático."], "curiosity": ["Você sabia? A estrela amarela na bandeira do Vietnã simboliza o Partido Comunista do Vietnã e representa as cinco classes principais da sociedade.", "Você sabia? O fundo vermelho representa a revolução e o sangue derramado pela independência."]},
+            { "name": "Peru", "code": "pe", "hints": ["É um país sul-americano com uma rica história inca e a Cordilheira dos Andes.", "Sua capital é Lima, e é famosa por Machu Picchu.", "Localiza-se na América do Sul."], "curiosity": ["Você sabia? As cores vermelha e branca da bandeira do Peru foram escolhidas pelo libertador José de San Martín, após avistar flamingos com essas cores ao desembarcar no país.", "Você sabia? O brasão de armas no centro da bandeira apresenta um vicunha, uma árvore de cinchona e uma cornucópia, simbolizando a fauna, a flora e a riqueza, respectivamente."]},
+            { "name": "Chile", "code": "cl", "hints": ["É um país comprido e estreito na América do Sul, com a Cordilheira dos Andes.", "Sua capital é Santiago.", "Localiza-se na América do Sul."], "curiosity": ["Você sabia? A estrela solitária na bandeira do Chile representa um guia para o progresso e a honra.", "Você sabia? O azul simboliza o céu e o Oceano Pacífico, o branco, a neve dos Andes, e o vermelho, o sangue derramado pela independência."]},
+            { "name": "Colômbia", "code": "co", "hints": ["É um país na ponta noroeste da América do Sul, com paisagens diversas.", "Sua capital é Bogotá.", "Localiza-se na América do Sul."], "curiosity": ["Você sabia? O amarelo na bandeira da Colômbia ocupa a metade superior e simboliza a riqueza do ouro, enquanto o azul representa os oceanos e o vermelho, o sangue derramado pela independência.", "Você sabia? O design é semelhante ao do Equador e da Venezuela, todos derivados da bandeira da Grã-Colômbia."]},
+            { "name": "Venezuela", "code": "ve", "hints": ["É um país da América do Sul com vasta biodiversidade e as Cataratas do Anjo.", "Sua capital é Caracas.", "Localiza-se na América do Sul."], "curiosity": ["Você sabia? As oito estrelas na bandeira da Venezuela representam as oito províncias originais que se declararam independentes do Império Espanhol.", "Você sabia? As cores da bandeira (amarelo, azul e vermelho) representam riqueza, o Oceano Atlântico e a coragem, respectivamente."]},
+            // --- INÍCIO DOS PAÍSES COM DICAS E CURIOSIDADES GENÉRICAS (PARA SEREM PREENCHIDAS POR VOCÊ) ---
+            { "name": "Afeganistão", "code": "af", "hints": ["É um país montanhoso na Ásia Central.", "Sua capital é Cabul.", "Localiza-se na Ásia."], "curiosity": ["Você sabia? A bandeira do Afeganistão é uma das poucas no mundo a apresentar um brasão de armas completo em seu centro.", "Você sabia? As cores preta, vermelha e verde representam seu passado (obscuridade), sangue (sacrifício) e prosperidade, respectivamente."]},
+            { "name": "Albânia", "code": "al", "hints": ["País dos Balcãs com uma águia bicéfala na bandeira.", "Sua capital é Tirana.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A águia bicéfala na bandeira da Albânia é um símbolo derivado do Império Bizantino e da dinastia Skanderbeg.", "Você sabia? A águia representa a coragem e o heroísmo do povo albanês."]},
+            { "name": "Argélia", "code": "dz", "hints": ["É o maior país da África por área terrestre.", "Sua capital é Argel.", "Localiza-se no norte da África."], "curiosity": ["Você sabia? A bandeira da Argélia inclui o crescente e a estrela, símbolos do Islã e também da esperança e da luz.", "Você sabia? O verde representa a esperança e o branco, a pureza."]},
+            { "name": "Andorra", "code": "ad", "hints": ["É um pequeno principado sem litoral na Europa.", "Faz fronteira com a França e a Espanha.", "Localiza-se na Europa."], "curiosity": ["Você sabia? O brasão de armas na bandeira de Andorra representa a soberania do país sob os co-príncipes da França e do Bispo de Urgell (Espanha).", "Você sabia? As cores azul, amarelo e vermelho são as cores das bandeiras da França e da Espanha."]},
+            { "name": "Angola", "code": "ao", "hints": ["É um país rico em recursos naturais na África Austral.", "Sua capital é Luanda.", "Localiza-se na África."], "curiosity": ["Você sabia? Os símbolos na bandeira de Angola, uma engrenagem e uma catana, representam os trabalhadores e os camponeses, respectivamente.", "Você sabia? A estrela dourada representa o progresso e a solidariedade internacional."]},
+            { "name": "Antígua e Barbuda", "code": "ag", "hints": ["É um estado insular caribenho conhecido pelas praias de areia branca.", "A capital é St. John's.", "Localiza-se no Caribe."], "curiosity": ["Você sabia? O sol nascente na bandeira de Antígua e Barbuda simboliza o alvorecer de uma nova era para o país.", "Você sabia? O azul representa o mar do Caribe, o preto, a herança africana do povo, e o vermelho, a energia e vitalidade."]},
+            { "name": "Armênia", "code": "am", "hints": ["É uma nação nas montanhas do Cáucaso, com uma rica história antiga.", "Sua capital é Erevan.", "Localiza-se no Cáucaso."], "curiosity": ["Você sabia? As cores da bandeira da Armênia (vermelho, azul e laranja) representam o sangue derramado pela sobrevivência, o céu e a esperança, e a terra fértil e o trabalho árduo, respectivamente.", "Você sabia? O vermelho simboliza as terras altas armênias e a luta do povo."]},
+            { "name": "Áustria", "code": "at", "hints": ["É um país alpino conhecido por sua música clássica e palácios imperiais.", "Sua capital é Viena.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A bandeira da Áustria é uma das mais antigas bandeiras nacionais existentes e sua lenda remonta ao século XII.", "Você sabia? As cores vermelha e branca são baseadas nas cores do escudo da Casa de Babenberg."]},
+            { "name": "Azerbaijão", "code": "az", "hints": ["É uma nação na região do Cáucaso, na encruzilhada da Europa e da Ásia.", "Sua capital é Baku.", "Localiza-se no Cáucaso."], "curiosity": ["Você sabia? As oito pontas da estrela na bandeira do Azerbaijão representam os oito ramos da língua turca.", "Você sabia? As cores azul, vermelho e verde representam a herança turca, o progresso e o Islã, respectivamente."]},
+            { "name": "Bahamas", "code": "bs", "hints": ["É um país insular no Atlântico, conhecido por suas águas cristalinas.", "Sua capital é Nassau.", "Localiza-se no Atlântico."], "curiosity": ["Você sabia? O triângulo preto na bandeira das Bahamas representa a força e o vigor do povo bahamense.", "Você sabia? As faixas azul-água representam o Oceano Atlântico e o mar do Caribe, e a faixa dourada, as areias douradas das ilhas."]},
+            { "name": "Bahrein", "code": "bh", "hints": ["É uma nação insular no Golfo Pérsico, com uma rica herança de pérolas.", "Sua capital é Manama.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? Os cinco triângulos brancos na bandeira do Bahrein representam os cinco pilares do Islã.", "Você sabia? O campo vermelho simboliza a cor tradicional dos estados do Golfo, enquanto o branco representa a paz e a trégua."]},
+            { "name": "Bangladesh", "code": "bd", "hints": ["É um país do sul da Ásia densamente povoado e atravessado por muitos rios.", "Sua capital é Daca.", "Localiza-se na Ásia."], "curiosity": ["Você sabia? O círculo vermelho na bandeira de Bangladesh representa o sol nascente sobre Bengala e o sangue derramado pelos que morreram pela independência.", "Você sabia? O fundo verde simboliza a exuberância da terra de Bangladesh e a juventude."]},
+            { "name": "Barbados", "code": "bb", "hints": ["É uma nação insular caribenha conhecida por suas praias e vida noturna vibrante.", "Sua capital é Bridgetown.", "Localiza-se no Caribe."], "curiosity": ["Você sabia? O tridente negro na bandeira de Barbados simboliza a independência do país, pois o tridente quebrou seu cabo da coroa britânica.", "Você sabia? As faixas azuis representam o Oceano Atlântico e o mar do Caribe, e a faixa dourada, a areia da praia."]},
+            { "name": "Belarus", "code": "by", "hints": ["É um país sem litoral na Europa Oriental, com vastas florestas.", "Sua capital é Minsk.", "Localiza-se na Europa."], "curiosity": ["Você sabia? O padrão ornamental na bandeira de Belarus é um design tradicional bielorrusso que simboliza a cultura e a prosperidade do país.", "Você sabia? O verde representa o futuro e o vermelho, o passado e o sangue derramado."]},
+            { "name": "Belize", "code": "bz", "hints": ["É um país da América Central com florestas densas e ruínas maias.", "Sua capital é Cidade de Belize.", "Localiza-se na América Central."], "curiosity": ["Você sabia? A bandeira de Belize é a única bandeira nacional a apresentar seres humanos como motivo principal.", "Você sabia? Os 50 ramos de mogno representam o ano de 1950, quando o movimento pela independência começou."]},
+            { "name": "Benim", "code": "bj", "hints": ["É uma nação da África Ocidental conhecida por sua rica história e cultura Vodum.", "Sua capital é Porto Novo.", "Localiza-se na África."], "curiosity": ["Você sabia? As cores da bandeira de Benin (verde, amarelo e vermelho) são as cores pan-africanas, simbolizando esperança, prosperidade e coragem, respectivamente.", "Você sabia? O verde representa a esperança e a vitalidade, o amarelo, a riqueza e o vermelho, a bravura."]},
+            { "name": "Butão", "code": "bt", "hints": ["É um reino budista no Himalaia, conhecido por sua felicidade nacional bruta.", "Sua capital é Thimphu.", "Localiza-se na Ásia."], "curiosity": ["Você sabia? O dragão Druk na bandeira do Butão representa a pureza e o poder do reino.", "Você sabia? As cores laranja e amarelo representam as tradições espirituais e a autoridade temporal do rei, respectivamente."]},
+            { "name": "Bolívia", "code": "bo", "hints": ["É um país sem litoral na América do Sul, com os Andes e o Salar de Uyuni.", "Tem duas capitais: La Paz e Sucre.", "Localiza-se na América do Sul."], "curiosity": ["Você sabia? As cores da bandeira da Bolívia (vermelho, amarelo e verde) representam o sangue derramado pelos heróis, a riqueza mineral e a fertilidade da terra, respectivamente.", "Você sabia? O brasão de armas no centro da bandeira inclui um condor, uma lhama, uma árvore de pão e um monte Potosi, que simbolizam a força, a fauna, a flora e a riqueza mineral."]},
+            { "name": "Bósnia e Herzegovina", "code": "ba", "hints": ["É um país da Península Balcânica com paisagens montanhosas e cidades medievais.", "Sua capital é Sarajevo.", "Localiza-se na Europa."], "curiosity": ["Você sabia? As estrelas na bandeira da Bósnia e Herzegovina representam a Europa e são infinitas, estendendo-se para fora da bandeira.", "Você sabia? As cores azul e amarela foram escolhidas para simbolizar a neutralidade e a paz."]},
+            { "name": "Botsuana", "code": "bw", "hints": ["É uma nação da África Austral com vastas áreas selvagens, incluindo o Delta do Okavango.", "Sua capital é Gaborone.", "Localiza-se na África."], "curiosity": ["Você sabia? As faixas azul-claro na bandeira de Botsuana representam a água e a chuva, cruciais para a sobrevivência no país árido.", "Você sabia? As faixas pretas e brancas no centro simbolizam a harmonia racial e o lema 'Pula', que significa 'chuva' e 'benção'."]},
+            { "name": "Brunei", "code": "bn", "hints": ["É um pequeno sultanato no Sudeste Asiático, na ilha de Bornéu.", "Sua capital é Bandar Seri Begawan.", "Localiza-se no Sudeste Asiático."], "curiosity": ["Você sabia? O brasão de armas na bandeira de Brunei inclui asas e um guarda-chuva cerimonial, representando a proteção da justiça e da paz.", "Você sabia? As faixas pretas e brancas representam os principais ministros do país, e o amarelo é a cor da realeza."]},
+            { "name": "Bulgária", "code": "bg", "hints": ["É um país da Península Balcânica com montanhas e litoral no Mar Negro.", "Sua capital é Sófia.", "Localiza-se na Europa."], "curiosity": ["Você sabia? As cores da bandeira da Bulgária (branco, verde e vermelho) simbolizam liberdade, florestas e agricultura, e o sangue derramado pela liberdade, respectivamente.", "Você sabia? O branco e o vermelho foram inspirados nas cores pan-eslavas."]},
+            { "name": "Burkina Faso", "code": "bf", "hints": ["É um país da África Ocidental conhecido por sua arte e cultura.", "Sua capital é Ouagadougou.", "Localiza-se na África."], "curiosity": ["Você sabia? As cores da bandeira de Burkina Faso (vermelho e verde) e a estrela dourada representam a revolução socialista e a riqueza mineral do país.", "Você sabia? O vermelho simboliza a revolução, o verde a riqueza natural e a estrela a luz que guia a nação."]},
+            { "name": "Burundi", "code": "bi", "hints": ["É um pequeno país da África Oriental, lar de hipopótamos e crocodilos.", "Sua capital é Gitega.", "Localiza-se na África."], "curiosity": ["Você sabia? As três estrelas na bandeira do Burundi representam as três principais etnias do país, e também o lema nacional: Unidade, Trabalho, Progresso.", "Você sabia? O branco simboliza a paz, o verde a esperança e o vermelho o sofrimento e sacrifício."]},
+            { "name": "Cabo Verde", "code": "cv", "hints": ["É uma nação insular vulcânica na costa noroeste da África.", "Sua capital é Praia.", "Localiza-se na África."], "curiosity": ["Você sabia? As dez estrelas na bandeira de Cabo Verde representam as dez ilhas principais do arquipélago, e a faixa azul simboliza o oceano.", "Você sabia? O círculo branco com o azul representa a esperança e a paz, e o vermelho, o esforço da nação."]},
+            { "name": "Camboja", "code": "kh", "hints": ["É um país do Sudeste Asiático conhecido pelos templos de Angkor Wat.", "Sua capital é Phnom Penh.", "Localiza-se no Sudeste Asiático."], "curiosity": ["Você sabia? A bandeira do Camboja é a única no mundo a apresentar um edifício real (Angkor Wat) em seu design.", "Você sabia? O azul representa a monarquia, o vermelho a nação e o branco a religião (budismo e hinduísmo)." ]},
+            { "name": "Camarões", "code": "cm", "hints": ["É um país da África Central com diversos terrenos e vida selvagem.", "Sua capital é Iaundê.", "Localiza-se na África."], "curiosity": ["Você sabia? A estrela amarela na bandeira de Camarões simboliza a unidade da nação, enquanto as cores são pan-africanas.", "Você sabia? As cores verde, vermelho e amarelo representam a floresta do sul, a unidade e o sol do norte, respectivamente."]},
+            { "name": "Cazaquistão", "code": "kz", "hints": ["É o maior país do mundo sem litoral e faz parte da Ásia Central.", "Sua capital é Astana.", "Localiza-se na Ásia Central."], "curiosity": ["Você sabia? O sol dourado com 32 raios na bandeira do Cazaquistão representa a riqueza e a abundância, e a águia voando, a liberdade.", "Você sabia? O ornamento nacional à esquerda é o 'koshkar-muyiz', que simboliza a arte e a cultura quirguiz."]},
+            { "name": "Chade", "code": "td", "hints": ["É um país sem litoral na África Central, com vastas extensões de deserto.", "Sua capital é N'Djamena.", "Localiza-se na África Central."], "curiosity": ["Você sabia? A bandeira do Chade é quase idêntica à da Romênia; a diferença está apenas em um tom ligeiramente mais escuro de azul.", "Você sabia? As cores azul, amarelo e vermelho representam o céu e a esperança, o deserto e o sol, e o sangue derramado, respectivamente."]},
+            { "name": "Chipre", "code": "cy", "hints": ["É uma ilha no leste do Mediterrâneo, com uma rica história e cultura.", "Sua capital é Nicósia.", "Localiza-se no Mediterrâneo."], "curiosity": ["Você sabia? O mapa de Chipre na bandeira é de cor cobre, simbolizando os grandes depósitos de cobre da ilha.", "Você sabia? Os dois ramos de oliveira abaixo do mapa simbolizam a paz entre as comunidades grega e turca da ilha."]},
+            { "name": "Comores", "code": "km", "hints": ["É uma nação insular vulcânica na costa leste da África.", "Sua capital é Moroni.", "Localiza-se na África."], "curiosity": ["Você sabia? As quatro estrelas e o crescente na bandeira das Comores representam as quatro ilhas principais do arquipélago e o Islã.", "Você sabia? As quatro faixas horizontais de cores diferentes simbolizam as quatro ilhas."]},
+            { "name": "Congo (República Democrática do)", "code": "cd", "hints": ["É o segundo maior país da África por área, com vasta floresta tropical.", "Sua capital é Kinshasa.", "Localiza-se na África Central."], "curiosity": ["Você sabia? A estrela na bandeira da República Democrática do Congo simboliza um futuro brilhante para o país.", "Você sabia? A faixa diagonal representa o sangue derramado pela independência."]},
+            { "name": "Congo (República do)", "code": "cg", "hints": ["É um país da África Central atravessado pelo rio Congo.", "Sua capital é Brazzaville.", "Localiza-se na África Central."], "curiosity": ["Você sabia? A faixa diagonal na bandeira do Congo (Brazzaville) representa o Equador, que passa pelo país.", "Você sabia? As cores verde, amarelo e vermelho são as cores pan-africanas."]},
+            { "name": "Coreia do Norte", "code": "kp", "hints": ["É um país isolado na Ásia Oriental, com um governo autoritário.", "Sua capital é Pyongyang.", "Localiza-se na Ásia Oriental."], "curiosity": ["Você sabia? A estrela vermelha na bandeira da Coreia do Norte simboliza o comunismo e o socialismo.", "Você sabia? As faixas azuis representam a soberania e a paz, e o vermelho, o espírito revolucionário."]},
+            { "name": "Costa do Marfim", "code": "ci", "hints": ["É um país da África Ocidental, principal produtor mundial de cacau.", "Sua capital é Yamoussoukro.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? A bandeira da Costa do Marfim é quase idêntica à da Irlanda, mas com as cores invertidas e proporções diferentes.", "Você sabia? O laranja representa a savana do norte, o branco a paz e o verde a floresta do sul."]},
+            { "name": "Costa Rica", "code": "cr", "hints": ["É um país da América Central conhecido por suas florestas tropicais e praias.", "Sua capital é São José.", "Localiza-se na América Central."], "curiosity": ["Você sabia? O brasão de armas na bandeira da Costa Rica inclui três vulcões, representando os três principais sistemas montanhosos do país.", "Você sabia? A faixa vermelha central é mais larga que as azuis e brancas, simbolizando a generosidade e o sangue derramado."]},
+            { "name": "Croácia", "code": "hr", "hints": ["É um país do leste europeu com uma longa costa no Mar Adriático.", "Sua capital é Zagreb.", "Localiza-se na Europa."], "curiosity": ["Você sabia? O brasão quadriculado vermelho e branco na bandeira da Croácia, conhecido como 'šahovnica', é um antigo símbolo croata.", "Você sabia? A coroa na parte superior do brasão representa as regiões históricas da Croácia."]},
+            { "name": "Dinamarca", "code": "dk", "hints": ["É um país nórdico com uma monarquia constitucional e muitos ilhas.", "Sua capital é Copenhague.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A bandeira da Dinamarca, a 'Dannebrog', é considerada a bandeira nacional mais antiga do mundo ainda em uso contínuo.", "Você sabia? A cruz nórdica simboliza o cristianismo."]},
+            { "name": "Djibouti", "code": "dj", "hints": ["É um pequeno país no Chifre da África, com uma localização estratégica.", "Sua capital é Djibouti.", "Localiza-se na África."], "curiosity": ["Você sabia? A estrela vermelha na bandeira de Djibouti representa a unidade das diferentes etnias do país.", "Você sabia? O verde simboliza a terra, o azul o céu e o mar, e o branco a paz."]},
+            { "name": "Dominica", "code": "dm", "hints": ["É uma ilha vulcânica no Caribe, conhecida por suas fontes termais naturais.", "Sua capital é Roseau.", "Localiza-se no Caribe."], "curiosity": ["Você sabia? O papagaio sisserou na bandeira da Dominica é uma espécie rara encontrada apenas nesta ilha.", "Você sabia? As dez estrelas representam as dez paróquias da ilha."]},
+            { "name": "República Dominicana", "code": "do", "hints": ["É uma nação caribenha que compartilha a ilha Hispaniola com o Haiti.", "Sua capital é Santo Domingo.", "Localiza-se no Caribe."], "curiosity": ["Você sabia? A bandeira da República Dominicana é a única bandeira nacional no mundo que tem uma Bíblia aberta em seu design.", "Você sabia? A cruz branca simboliza o sacrifício pela pátria, e as cores azul e vermelha representam o céu e o sangue, respectivamente."]},
+            { "name": "Timor-Leste", "code": "tl", "hints": ["É uma nação do Sudeste Asiático, parte de uma ilha vulcânica.", "Sua capital é Díli.", "Localiza-se no Sudeste Asiático."], "curiosity": ["Você sabia? A estrela branca na bandeira de Timor-Leste simboliza a luz que guia o povo para a paz e a justiça.", "Você sabia? O preto representa o obscurantismo e o vermelho o sangue derramado na luta pela libertação nacional."]},
+            { "name": "Equador", "code": "ec", "hints": ["É um país andino na América do Sul, lar das Ilhas Galápagos.", "Sua capital é Quito.", "Localiza-se na América do Sul."], "curiosity": ["Você sabia? O brasão de armas na bandeira do Equador inclui o condor dos Andes, um símbolo de poder, grandeza e força.", "Você sabia? O amarelo representa a riqueza e abundância, o azul o oceano e o céu, e o vermelho o sangue derramado."]},
+            { "name": "El Salvador", "code": "sv", "hints": ["É o menor país da América Central, com belas praias e vulcões.", "Sua capital é San Salvador.", "Localiza-se na América Central."], "curiosity": ["Você sabia? O triângulo central na bandeira de El Salvador representa igualdade e os três poderes do Estado.", "Você sabia? As faixas azuis representam os oceanos Pacífico e Atlântico, e a branca a paz e a pureza."]},
+            { "name": "Guiné Equatorial", "code": "gq", "hints": ["É um pequeno país da África Central, com território na África continental e ilhas.", "Sua capital é Malabo.", "Localiza-se na África Central."], "curiosity": ["Você sabia? O brasão de armas na bandeira da Guiné Equatorial apresenta uma árvore de seda, que é nativa da região.", "Você sabia? As cores verde, branco, vermelho e azul representam a flora, a paz, o sangue derramado e o oceano."]},
+            { "name": "Eritreia", "code": "er", "hints": ["É um país do Chifre da África, com uma longa costa no Mar Vermelho.", "Sua capital é Asmara.", "Localiza-se na África."], "curiosity": ["Você sabia? O ramo de oliveira na bandeira da Eritreia simboliza a paz.", "Você sabia? As cores verde, azul e vermelho representam a agricultura e a fertilidade, o mar e o sangue derramado pela independência."]},
+            { "name": "Estônia", "code": "ee", "hints": ["É um país báltico do norte da Europa, com uma grande floresta.", "Sua capital é Tallinn.", "Localiza-se na Europa."], "curiosity": ["Você sabia? As cores da bandeira da Estônia (azul, preto e branco) representam o céu, a terra escura e a neve do inverno, respectivamente.", "Você sabia? O azul simboliza a lealdade e a esperança do povo."]},
+            { "name": "Eswatini", "code": "sz", "hints": ["Anteriormente conhecido como Suazilândia, é um pequeno reino sem litoral.", "Sua capital é Mbabane (administrativa).", "Localiza-se na África Austral."], "curiosity": ["Você sabia? A bandeira de Eswatini inclui um escudo tradicional suaíli e duas lanças, simbolizando a proteção do reino.", "Você sabia? As cores azul, amarelo e vermelho representam a paz, os recursos naturais e as batalhas passadas."]},
+            { "name": "Etiópia", "code": "et", "hints": ["É um país do Chifre da África, com uma rica história antiga.", "Sua capital é Adis Abeba.", "Localiza-se na África."], "curiosity": ["Você sabia? O emblema na bandeira da Etiópia, um pentagrama radiante, representa a unidade do povo etíope e sua diversidade.", "Você sabia? As cores verde, amarelo e vermelho são as cores pan-africanas, simbolizando esperança, paz e força."]},
+            { "name": "Fiji", "code": "fj", "hints": ["É uma nação insular na Melanésia, conhecida por suas praias e recifes.", "Sua capital é Suva.", "Localiza-se na Oceania."], "curiosity": ["Você sabia? A bandeira de Fiji ainda mantém a Union Jack no canto superior esquerdo, um resquício de sua história colonial britânica.", "Você sabia? O azul-claro representa o Oceano Pacífico, e o brasão de armas o histórico e os recursos naturais."]},
+            { "name": "Filipinas", "code": "ph", "hints": ["É um arquipélago no Sudeste Asiático, com milhares de ilhas.", "Sua capital é Manila.", "Localiza-se no Sudeste Asiático."], "curiosity": ["Você sabia? A bandeira das Filipinas é única porque, em tempos de guerra, ela é invertida, com o campo vermelho no topo e o azul na parte inferior.", "Você sabia? O sol com oito raios representa as oito províncias iniciais que se revoltaram contra a Espanha."]},
+            { "name": "Finlândia", "code": "fi", "hints": ["É um país nórdico conhecido por suas florestas, lagos e a Aurora Boreal.", "Sua capital é Helsinque.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A cruz azul na bandeira da Finlândia representa os milhares de lagos e o céu azul do país.", "Você sabia? O branco representa a neve do inverno."]},
+            { "name": "Gabão", "code": "ga", "hints": ["É um país da África Central com vastas áreas de parque nacional.", "Sua capital é Libreville.", "Localiza-se na África Central."], "curiosity": ["Você sabia? As cores da bandeira do Gabão representam o sol (amarelo), as florestas (verde) e o Atlântico (azul).", "Você sabia? O verde simboliza a vegetação, o amarelo o sol equador e o azul o oceano."]},
+            { "name": "Gâmbia", "code": "gm", "hints": ["É o menor país da África continental, cercado pelo Senegal.", "Sua capital é Dacar.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? As duas listras azuis estreitas na bandeira da Gâmbia representam o rio Gâmbia, que corta o país.", "Você sabia? O vermelho simboliza o sol e o azul o rio, enquanto o verde representa a agricultura."]},
+            { "name": "Geórgia", "code": "ge", "hints": ["É um país na junção da Europa e da Ásia, conhecido por suas montanhas e vinhos.", "Sua capital é Tbilisi.", "Localiza-se no Cáucaso."], "curiosity": ["Você sabia? A bandeira da Geórgia, a 'Bandeira dos Cinco Cruzeiros', é baseada na bandeira medieval do Reino da Geórgia.", "Você sabia? As cinco cruzes simbolizam o cristianismo e as quatro menores representam os quatro evangelistas."]},
+            { "name": "Gana", "code": "gh", "hints": ["É uma nação da África Ocidental conhecida por suas minas de ouro e mercados vibrantes.", "Sua capital é Acra.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? A estrela preta na bandeira de Gana representa a estrela-guia da liberdade africana.", "Você sabia? As cores vermelha, dourada e verde são as cores pan-africanas, representando o sangue derramado, a riqueza e a esperança."]},
+            { "name": "Granada", "code": "gd", "hints": ["É uma nação insular caribenha conhecida como a 'Ilha das Especiarias'.", "Sua capital é St. George's.", "Localiza-se no Caribe."], "curiosity": ["Você sabia? O pequeno emblema na bandeira de Granada representa uma noz-moscada, um dos principais produtos agrícolas do país.", "Você sabia? As sete estrelas representam as sete paróquias da ilha."]},
+            { "name": "Guatemala", "code": "gt", "hints": ["É um país da América Central com vulcões, florestas tropicais e sítios maias.", "Sua capital é Cidade da Guatemala.", "Localiza-se na América Central."], "curiosity": ["Você sabia? O quetzal, pássaro nacional da Guatemala, aparece no brasão de armas da bandeira e simboliza a liberdade.", "Você sabia? As faixas azul-celeste representam os oceanos Pacífico e Atlântico que banham o país."]},
+            { "name": "Guiné", "code": "gn", "hints": ["É um país da África Ocidental com vastos recursos minerais.", "Sua capital é Conacri.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? As cores da bandeira da Guiné (vermelho, amarelo e verde) são cores pan-africanas, simbolizando sacrifício, riqueza e esperança.", "Você sabia? O vermelho representa o sangue dos mártires, o amarelo o sol e a riqueza, e o verde a vegetação."]},
+            { "name": "Guiné-Bissau", "code": "gw", "hints": ["É um país da África Ocidental conhecido por seu arquipélago costeiro.", "Sua capital é Bissau.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? A estrela negra na bandeira da Guiné-Bissau é um símbolo da África e da unidade e liberdade.", "Você sabia? O vermelho representa a luta, o verde a esperança e o amarelo a riqueza do país."]},
+            { "name": "Guiana", "code": "gy", "hints": ["É um país da América do Sul com densa floresta tropical e cachoeiras espetaculares.", "Sua capital é Georgetown.", "Localiza-se na América do Sul."], "curiosity": ["Você sabia? As setas coloridas na bandeira da Guiana representam o dinamismo e o futuro progressivo do país.", "Você sabia? O triângulo amarelo simboliza a riqueza mineral, o vermelho o zelo e o verde a agricultura."]},
+            { "name": "Haiti", "code": "ht", "hints": ["É uma nação caribenha que compartilha a ilha Hispaniola com a República Dominicana.", "Sua capital é Porto Príncipe.", "Localiza-se no Caribe."], "curiosity": ["Você sabia? A bandeira do Haiti é a única bandeira nacional que possui um mapa de seu próprio território em seu brasão de armas.", "Você sabia? O azul e o vermelho representam as populações negra e mulata do Haiti, unidas."]},
+            { "name": "Honduras", "code": "hn", "hints": ["É um país da América Central conhecido por suas ruínas maias e florestas tropicais.", "Sua capital é Tegucigalpa.", "Localiza-se na América Central."], "curiosity": ["Você sabia? As cinco estrelas azuis na bandeira de Honduras representam as cinco nações originais da antiga Federação da América Central.", "Você sabia? As faixas azuis representam os oceanos que banham o país e a faixa branca, a paz e a pureza."]},
+            { "name": "Hungria", "code": "hu", "hints": ["É um país da Europa Central com uma rica história e fontes termais.", "Sua capital é Budapeste.", "Localiza-se na Europa."], "curiosity": ["Você sabia? As cores da bandeira da Hungria (vermelho, branco e verde) são interpretadas como força, fidelidade e esperança, respectivamente.", "Você sabia? A bandeira foi adotada na forma atual após a revolução de 1848."]},
+            { "name": "Islândia", "code": "is", "hints": ["É uma ilha nórdica conhecida por sua atividade geotérmica e paisagens vulcânicas.", "Sua capital é Reiquiavique.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A bandeira da Islândia usa a cruz nórdica, um símbolo comum em bandeiras dos países escandinavos.", "Você sabia? O vermelho e o azul na cruz representam o fogo dos vulcões e o Oceano Atlântico, respectivamente."]},
+            { "name": "Indonésia", "code": "id", "hints": ["É um vasto arquipélago no Sudeste Asiático, com milhares de ilhas vulcânicas.", "Sua capital é Jacarta.", "Localiza-se no Sudeste Asiático."], "curiosity": ["Você sabia? A bandeira da Indonésia é quase idêntica à de Mônaco, diferindo apenas nas proporções.", "Você sabia? As cores vermelha e branca são consideradas as cores sagradas do império Majapahit, que existiu no século XIII."]},
+            { "name": "Irã", "code": "ir", "hints": ["É um país do Oriente Médio com uma rica história persa e influências islâmicas.", "Sua capital é Teerã.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? A caligrafia branca nas faixas verde e vermelha da bandeira do Irã repete a frase 'Allahu Akbar' (Deus é Grande) 22 vezes, em referência à data da Revolução Islâmica.", "Você sabia? O emblema central representa a palavra 'Alá' em caligrafia estilizada, e simboliza o crescimento e a justiça."]},
+            { "name": "Iraque", "code": "iq", "hints": ["É um país do Oriente Médio, berço de algumas das civilizações mais antigas do mundo.", "Sua capital é Bagdá.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? A frase 'Allahu Akbar' (Deus é Grande) escrita em árabe cúfico aparece na faixa branca da bandeira do Iraque.", "Você sabia? As cores preta, branca e vermelha são as cores pan-árabes, representando os califados abássida, omíada e o sangue derramado, respectivamente."]},
+            { "name": "Israel", "code": "il", "hints": ["É um país do Oriente Médio na costa leste do Mar Mediterrâneo.", "Sua capital é Jerusalém.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? A estrela de Davi na bandeira de Israel é um símbolo do judaísmo, enquanto as duas faixas azuis representam o talit (manto de oração judeu).", "Você sabia? A estrela de Davi é um símbolo que remonta ao Rei Davi no Antigo Testamento."]},
+            { "name": "Jamaica", "code": "jm", "hints": ["É uma ilha caribenha conhecida por suas praias e a cultura reggae.", "Sua capital é Kingston.", "Localiza-se no Caribe."], "curiosity": ["Você sabia? A bandeira da Jamaica é a única no mundo que não possui nenhuma das cores vermelho, branco ou azul.", "Você sabia? O triângulo amarelo representa a riqueza mineral e o sol, o verde a esperança e a agricultura, e o preto a força e a criatividade do povo."]},
+            { "name": "Jordânia", "code": "jo", "hints": ["É um reino árabe no leste do rio Jordão, com sítios arqueológicos como Petra.", "Sua capital é Amã.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? A estrela de sete pontas na bandeira da Jordânia simboliza a unidade dos povos árabes.", "Você sabia? As cores preta, branca e verde são as cores pan-árabes, representando o califado abássida, omíada e fatímida, e o vermelho simboliza a Revolta Árabe."]},
+            { "name": "Quênia", "code": "ke", "hints": ["É um país da África Oriental conhecido por seus safáris e vida selvagem.", "Sua capital é Nairóbi.", "Localiza-se na África Oriental."], "curiosity": ["Você sabia? O escudo Maasai e as duas lanças na bandeira do Quênia simbolizam a defesa da liberdade do país.", "Você sabia? O preto representa o povo queniano, o vermelho o sangue derramado na luta pela liberdade e o verde a riqueza natural."]},
+            { "name": "Kiribati", "code": "ki", "hints": ["É uma nação insular do Pacífico Central, com 32 atóis e uma ilha.", "Sua capital é Tarawa do Sul.", "Localiza-se na Oceania."], "curiosity": ["Você sabia? O sol na bandeira de Kiribati representa a latitude do país, que cruza o Equador, e as ondas, o Oceano Pacífico.", "Você sabia? A fragata voando sobre o sol simboliza o poder e a liberdade."]},
+            { "name": "Kuwait", "code": "kw", "hints": ["É um pequeno estado árabe rico em petróleo na costa do Golfo Pérsico.", "Sua capital é Cidade do Kuwait.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? As cores da bandeira do Kuwait (preto, branco, verde e vermelho) são as cores pan-árabes, simbolizando o califado abássida, omíada, fatímida e o sangue derramado, respectivamente.", "Você sabia? O trapézio preto à esquerda simboliza a terra do Iraque e a escuridão da tirania."]},
+            { "name": "Quirguistão", "code": "kg", "hints": ["É um país sem litoral na Ásia Central, com montanhas e lagos de alta altitude.", "Sua capital é Bishkek.", "Localiza-se na Ásia Central."], "curiosity": ["Você sabia? O sol na bandeira do Quirguistão representa a paz e a prosperidade, e as 40 raios do sol simbolizam as 40 tribos quirguizes.", "Você sabia? A tenda nômade tradicional, ou 'tunduk', é o principal elemento do sol."]},
+            { "name": "Laos", "code": "la", "hints": ["É um país sem litoral no Sudeste Asiático, atravessado pelo rio Mekong.", "Sua capital é Vientiane.", "Localiza-se no Sudeste Asiático."], "curiosity": ["Você sabia? O círculo branco na bandeira do Laos representa a lua sobre o rio Mekong ou a unidade do povo sob o governo comunista.", "Você sabia? O azul simboliza a prosperidade do país e o vermelho, o sangue derramado pela liberdade."]},
+            { "name": "Letônia", "code": "lv", "hints": ["É um país báltico no norte da Europa, com uma rica herança medieval.", "Sua capital é Riga.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A bandeira da Letônia é uma das mais antigas do mundo, com registros de seu uso datando do século XIII.", "Você sabia? A cor marrom-avermelhada é conhecida como 'vermelho Letão' e simboliza o sangue derramado pela independência."]},
+            { "name": "Líbano", "code": "lb", "hints": ["É um país no Oriente Médio na costa do Mediterrâneo, com uma história antiga.", "Sua capital é Beirute.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? O cedro do Líbano na bandeira é um símbolo de longevidade, força e imortalidade, mencionado na Bíblia.", "Você sabia? As faixas vermelhas representam o sangue derramado na luta pela liberdade, e o branco, a paz e a neve das montanhas."]},
+            { "name": "Lesoto", "code": "ls", "hints": ["É um pequeno reino sem litoral, totalmente cercado pela África do Sul.", "Sua capital é Maseru.", "Localiza-se na África Austral."], "curiosity": ["Você sabia? O chapéu tradicional 'mokorotlo' na bandeira de Lesoto é um símbolo da identidade nacional e da autoridade do povo basotho.", "Você sabia? As cores azul, branco e verde representam o céu, a paz e a prosperidade."]},
+            { "name": "Libéria", "code": "lr", "hints": ["É um país da África Ocidental fundado por ex-escravos americanos.", "Sua capital é Monróvia.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? A bandeira da Libéria é inspirada na bandeira dos Estados Unidos, refletindo sua história como uma nação fundada por ex-escravos americanos.", "Você sabia? As 11 listras representam os 11 signatários da Declaração de Independência da Libéria."]},
+            { "name": "Líbia", "code": "ly", "hints": ["É um país no norte da África, com vastas extensões do Deserto do Saara.", "Sua capital é Trípoli.", "Localiza-se no norte da África."], "curiosity": ["Você sabia? A bandeira da Líbia atual foi reintroduzida em 2011, após o regime de Gaddafi usar uma bandeira completamente verde por mais de 30 anos.", "Você sabia? As cores vermelha, preta e verde representam as três principais regiões da Líbia, e o crescente e a estrela, o Islã."]},
+            { "name": "Liechtenstein", "code": "li", "hints": ["É um pequeno principado alpino entre a Suíça e a Áustria.", "Sua capital é Vaduz.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A coroa na bandeira de Liechtenstein simboliza a soberania e a unidade da nação e da família principesca.", "Você sabia? As cores azul e vermelha são as cores da família principesca."]},
+            { "name": "Lituânia", "code": "lt", "hints": ["É um país báltico no norte da Europa, com uma costa no Mar Báltico.", "Sua capital é Vilnius.", "Localiza-se na Europa."], "curiosity": ["Você sabia? As cores da bandeira da Lituânia (amarelo, verde e vermelho) representam o sol e a prosperidade, a natureza e a esperança, e o sangue e a coragem, respectivamente.", "Você sabia? A bandeira foi usada pela primeira vez em 1918 e restaurada em 1989."]},
+            { "name": "Luxemburgo", "code": "lu", "hints": ["É um pequeno país europeu, um dos mais ricos do mundo.", "Sua capital é Luxemburgo.", "Localiza-lse na Europa."], "curiosity": ["Você sabia? A bandeira de Luxemburgo é quase idêntica à dos Países Baixos, mas com um tom mais claro de azul e uma proporção ligeiramente diferente.", "Você sabia? As cores vermelho, branco e azul são derivadas do brasão de armas da Casa de Luxemburgo."]},
+            { "name": "Madagáscar", "code": "mg", "hints": ["É uma grande ilha no Oceano Índico, conhecida por sua vida selvagem única.", "Sua capital é Antananarivo.", "Localiza-se na África."], "curiosity": ["Você sabia? As cores da bandeira de Madagáscar (branco, vermelho e verde) representam a pureza, a soberania e a esperança, respectivamente.", "Você sabia? A bandeira foi criada em 1958, pouco antes da independência."]},
+            { "name": "Malaui", "code": "mw", "hints": ["É um país da África Oriental, lar do Lago Malaui.", "Sua capital é Lilongue.", "Localiza-se na África Oriental."], "curiosity": ["Você sabia? O sol nascente na bandeira de Malaui simboliza o alvorecer da esperança para a África.", "Você sabia? As cores preta, vermelha e verde representam o povo africano, o sangue derramado e a natureza, respectivamente."]},
+            { "name": "Malásia", "code": "my", "hints": ["É um país do Sudeste Asiático que ocupa partes de uma península e da ilha de Bornéu.", "Sua capital é Kuala Lumpur.", "Localiza-se no Sudeste Asiático."], "curiosity": ["Você sabia? As 14 listras e pontas da estrela na bandeira da Malásia representam os 13 estados e os territórios federais que compõem o país.", "Você sabia? A lua crescente e a estrela simbolizam o Islã, a religião oficial."]},
+            { "name": "Maldivas", "code": "mv", "hints": ["É uma nação insular no Oceano Índico, conhecida por seus atóis de coral e praias.", "Sua capital é Malé.", "Localiza-se na Ásia."], "curiosity": ["Você sabia? O crescente e a estrela na bandeira das Maldivas são símbolos do Islã, a religião oficial do país.", "Você sabia? O campo vermelho simboliza a coragem, e o verde, as palmeiras e a prosperidade."]},
+            { "name": "Mali", "code": "ml", "hints": ["É um país sem litoral na África Ocidental, com uma rica história de impérios.", "Sua capital é Bamako.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? As cores da bandeira do Mali (verde, amarelo e vermelho) são as cores pan-africanas, representando a esperança, a prosperidade e o sacrifício.", "Você sabia? A bandeira é inspirada na bandeira de Gana e da Etiópia."]},
+            { "name": "Malta", "code": "mt", "hints": ["É um arquipélago no Mediterrâneo Central, com uma história de muitas civilizações.", "Sua capital é Valeta.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A cruz de São Jorge na bandeira de Malta foi concedida à ilha pelo Rei George VI por sua bravura durante a Segunda Guerra Mundial.", "Você sabia? É uma das poucas bandeiras no mundo com uma decoração real."]},
+            { "name": "Ilhas Marshall", "code": "mh", "hints": ["É uma nação insular na Oceania, composta por 29 atóis e 5 ilhas.", "Sua capital é Majuro.", "Localiza-se na Oceania."], "curiosity": ["Você sabia? As 24 estrelas na bandeira das Ilhas Marshall representam os 24 distritos eleitorais do país.", "Você sabia? A faixa diagonal representa o Equador e as cores o oceano e a iluminação."]},
+            { "name": "Mauritânia", "code": "mr", "hints": ["É um país da África Ocidental, com grande parte de seu território no Saara.", "Sua capital é Nouakchott.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? A bandeira da Mauritânia foi atualizada em 2017 para incluir duas faixas vermelhas que simbolizam o sangue derramado pela independência.", "Você sabia? O verde e o dourado são cores pan-africanas e representam a esperança e a riqueza."]},
+            { "name": "Maurícia", "code": "mu", "hints": ["É uma nação insular no Oceano Índico, conhecida por suas praias e recifes.", "Sua capital é Port Louis.", "Localiza-se na África."], "curiosity": ["Você sabia? As quatro cores da bandeira da Maurícia representam as características únicas do país: o Oceano Índico, as planícies verdes, a liberdade e o sol.", "Você sabia? A bandeira é um quadrilátero com quatro faixas horizontais iguais."]},
+            { "name": "Micronésia (Estados Federados da)", "code": "fm", "hints": ["É um país composto por mais de 600 ilhas espalhadas pelo Oceano Pacífico.", "Sua capital é Palikir.", "Localiza-se na Oceania."], "curiosity": ["Você sabia? As quatro estrelas brancas na bandeira da Micronésia representam os quatro estados do país: Chuuk, Kosrae, Pohnpei e Yap.", "Você sabia? O azul simboliza o Oceano Pacífico."]},
+            { "name": "Moldávia", "code": "md", "hints": ["É um país sem litoral na Europa Oriental, conhecido por suas colinas e vinícolas.", "Sua capital é Quixinau.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A bandeira da Moldávia é quase idêntica à da Romênia, com a diferença do brasão de armas ao centro.", "Você sabia? O brasão de armas inclui uma águia dourada segurando um escudo com a cabeça de um auroque."]},
+            { "name": "Mônaco", "code": "mc", "hints": ["É um pequeno principado soberano na Riviera Francesa.", "Sua capital é Mônaco.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A bandeira de Mônaco é uma das bandeiras nacionais mais simples do mundo, com apenas duas faixas horizontais de vermelho e branco.", "Você sabia? As cores são as cores heráldicas da Casa de Grimaldi."]},
+            { "name": "Mongólia", "code": "mn", "hints": ["É um país sem litoral na Ásia Oriental, conhecido por suas vastas estepes.", "Sua capital é Ulan Bator.", "Localiza-se na Ásia."], "curiosity": ["Você sabia? O símbolo Soyombo na bandeira da Mongólia é um emblema nacional que inclui uma chama (prosperidade), sol e lua (eternidade) e símbolos budistas.", "Você sabia? O azul central representa o céu, e o vermelho, o fogo e a prosperidade."]},
+            { "name": "Montenegro", "code": "me", "hints": ["É um país dos Balcãs com montanhas e litoral no Mar Adriático.", "Sua capital é Podgorica.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A bandeira de Montenegro é dominada pela águia de duas cabeças do brasão de armas da Casa Real de Petrović-Njegoš.", "Você sabia? A águia simboliza a soberania do estado e a dupla natureza do país (secular e espiritual)." ]},
+            { "name": "Marrocos", "code": "ma", "hints": ["É um país do norte da África com uma longa costa no Atlântico e no Mediterrâneo.", "Sua capital é Rabat.", "Localiza-se no norte da África."], "curiosity": ["Você sabia? O pentagrama verde na bandeira de Marrocos é o Selo de Salomão, simbolizando os cinco pilares do Islã e o vínculo entre Deus e a nação.", "Você sabia? O fundo vermelho é a cor da dinastia alauita, que governa o Marrocos."]},
+            { "name": "Moçambique", "code": "mz", "hints": ["É um país da África Oriental com uma longa costa no Oceano Índico.", "Sua capital é Maputo.", "Localiza-se na África Oriental."], "curiosity": ["Você sabia? A bandeira de Moçambique é a única bandeira nacional no mundo que apresenta um rifle AK-47.", "Você sabia? O livro aberto, a enxada e o AK-47 simbolizam educação, agricultura e defesa, respectivamente."]},
+            { "name": "Myanmar", "code": "mm", "hints": ["É um país do Sudeste Asiático conhecido por seus templos budistas e paisagens exuberantes.", "Sua capital é Naipidau.", "Localiza-se no Sudeste Asiático."], "curiosity": ["Você sabia? A estrela branca na bandeira de Mianmar representa a união e a integridade do país.", "Você sabia? As cores amarela, verde e vermelha simbolizam a solidariedade, a paz e a prosperidade, e a bravura, respectivamente."]},
+            { "name": "Namíbia", "code": "na", "hints": ["É um país da África Austral com o deserto do Namibe e uma costa árida.", "Sua capital é Windhoek.", "Localiza-se na África Austral."], "curiosity": ["Você sabia? O sol na bandeira da Namíbia representa vida e energia, e as 12 pontas simbolizam as 12 tribos do país.", "Você sabia? As faixas azul, vermelha e verde representam o céu e o Oceano Atlântico, a bravura e o povo, e os recursos naturais."]},
+            { "name": "Nauru", "code": "nr", "hints": ["É o menor estado insular do mundo, no Oceano Pacífico Central.", "Não tem capital oficial, mas Yaren é o maior assentamento.", "Localiza-se na Oceania."], "curiosity": ["Você sabia? A estrela de 12 pontas na bandeira de Nauru representa as 12 tribos indígenas da ilha.", "Você sabia? A faixa amarela central simboliza a linha do Equador, e o azul o Oceano Pacífico."]},
+            { "name": "Nepal", "code": "np", "hints": ["É um país sem litoral no Himalaia, lar do Monte Everest.", "Sua capital é Catmandu.", "Localiza-se na Ásia."], "curiosity": ["Você sabia? A bandeira do Nepal é a única bandeira nacional não retangular do mundo, composta por dois triângulos.", "Você sabia? Os dois triângulos representam o Himalaia e também as duas principais religiões do país, o Hinduísmo e o Budismo."]},
+            { "name": "Nicarágua", "code": "ni", "hints": ["É o maior país da América Central, com lagos e vulcões.", "Sua capital é Manágua.", "Localiza-se na América Central."], "curiosity": ["Você sabia? O triângulo e as cores da bandeira da Nicarágua são inspirados na antiga bandeira da Federação da América Central.", "Você sabia? As duas faixas azuis representam os oceanos Pacífico e Atlântico, e a branca a paz."]},
+            { "name": "Níger", "code": "ne", "hints": ["É um país sem litoral da África Ocidental, com vasta área do Deserto do Saara.", "Sua capital é Niamey.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? O círculo laranja no centro da bandeira do Níger representa o sol e o Deserto do Saara.", "Você sabia? A bandeira simboliza a fraternidade, o espírito de luta e a vegetação."]},
+            { "name": "Nigéria", "code": "ng", "hints": ["É o país mais populoso da África e uma grande potência econômica.", "Sua capital é Abuja.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? As duas faixas verdes na bandeira da Nigéria representam a agricultura e a riqueza natural, enquanto a faixa branca simboliza a paz.", "Você sabia? A bandeira foi projetada por um estudante em 1959."]},
+            { "name": "Macedônia do Norte", "code": "mk", "hints": ["É um país da Península Balcânica com lagos e montanhas.", "Sua capital é Escópia.", "Localiza-se na Europa."], "curiosity": ["Você sabia? O sol estilizado com oito raios na bandeira da Macedônia do Norte representa o 'novo sol da liberdade' do país.", "Você sabia? O vermelho simboliza a liberdade."]},
+            { "name": "Omã", "code": "om", "hints": ["É uma nação árabe na costa sudeste da Península Arábica.", "Sua capital é Mascate.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? O emblema nacional de Omã na bandeira apresenta um khanjar (punhal tradicional) e duas espadas cruzadas.", "Você sabia? O vermelho na bandeira simboliza o sangue derramado na luta contra invasores, e o branco e o verde a paz e a fertilidade."]},
+            { "name": "Paquistão", "code": "pk", "hints": ["É um país do sul da Ásia com uma rica história e diversidade cultural.", "Sua capital é Islamabad.", "Localiza-se na Ásia."], "curiosity": ["Você sabia? A bandeira do Paquistão, com sua lua crescente e estrela, simboliza o Islã e o progresso, respectivamente.", "Você sabia? A faixa branca à esquerda representa as minorias religiosas do país."]},
+            { "name": "Palau", "code": "pw", "hints": ["É uma nação insular na Oceania, com mais de 500 ilhas.", "Sua capital é Ngerulmud.", "Localiza-se na Oceania."], "curiosity": ["Você sabia? O círculo ligeiramente descentralizado na bandeira de Palau representa a lua cheia, importante para os palauanos na pesca e agricultura.", "Você sabia? O fundo azul simboliza o oceano e a soberania."]},
+            { "name": "Palestina (Estado da Palestina)", "code": "ps", "hints": ["É uma entidade observadora da ONU, localizada no Oriente Médio.", "Suas capitais são Jerusalém Oriental (reivindicada) e Ramallah (administrativa).", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? As cores da bandeira palestina são as cores pan-árabes, simbolizando a união e a luta do povo árabe.", "Você sabia? O triângulo vermelho representa o sangue derramado pelos mártires."]},
+            { "name": "Panamá", "code": "pa", "hints": ["É um país que liga a América do Norte e do Sul, famoso por seu canal.", "Sua capital é Cidade do Panamá.", "Localiza-se na América Central."], "curiosity": ["Você sabia? As estrelas na bandeira do Panamá representam os dois grandes partidos políticos do país e a paz e a pureza que devem guiá-los.", "Você sabia? As cores vermelha e azul representam os partidos Conservador e Liberal."]},
+            { "name": "Papua Nova Guiné", "code": "pg", "hints": ["É um país da Oceania com uma vasta biodiversidade e diversidade cultural.", "Sua capital é Porto Moresby.", "Localiza-se na Oceania."], "curiosity": ["Você sabia? A ave do paraíso na bandeira de Papua Nova Guiné é um símbolo indígena e representa a união da nação.", "Você sabia? As cinco estrelas do Cruzeiro do Sul indicam sua localização no hemisfério sul."]},
+            { "name": "Paraguai", "code": "py", "hints": ["É um país sem litoral na América do Sul, com grandes extensões de pântano.", "Sua capital é Assunção.", "Localiza-se na América do Sul."], "curiosity": ["Você sabia? A bandeira do Paraguai é a única bandeira nacional que possui brasões diferentes em seu anverso e reverso.", "Você sabia? O brasão no anverso mostra uma estrela e o lema 'Paz y Justicia', e no reverso, um leão com a frase 'República del Paraguay'."]},
+            { "name": "Qatar", "code": "qa", "hints": ["É uma península no Golfo Pérsico, conhecida pela sua riqueza em petróleo e gás.", "Sua capital é Doha.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? As nove pontas em forma de serra na bandeira do Qatar representam os nove emirados que, na época de sua adoção, eram parte do Qatar.", "Você sabia? O branco simboliza a paz e o marrom-avermelhado o sangue derramado em guerras."]},
+            { "name": "Romênia", "code": "ro", "hints": ["É um país do sudeste da Europa conhecido por sua região da Transilvânia e castelos medievais.", "Sua capital é Bucareste.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A bandeira da Romênia é um tricolor vertical, com as cores azul, amarelo e vermelho, que simbolizam os princípios da Revolução de 1848.", "Você sabia? É quase idêntica à bandeira do Chade."]},
+            { "name": "Ruanda", "code": "rw", "hints": ["É um pequeno país da África Oriental, conhecido como a 'Terra das Mil Colinas'.", "Sua capital é Kigali.", "Localiza-se na África Oriental."], "curiosity": ["Você sabia? O sol na bandeira de Ruanda simboliza a iluminação e o novo alvorecer para o país.", "Você sabia? As cores azul, amarela e verde representam a felicidade, a riqueza e a esperança."]},
+            { "name": "São Cristóvão e Neves", "code": "kn", "hints": ["É uma nação insular caribenha composta por duas ilhas vulcânicas.", "Sua capital é Basseterre.", "Localiza-se no Caribe."], "curiosity": ["Você sabia? As duas estrelas na bandeira de São Cristóvão e Neves representam as duas ilhas principais do país.", "Você sabia? As cores verde e vermelha simbolizam a fertilidade e a luta pela liberdade, e as estrelas, a esperança e a prosperidade."]},
+            { "name": "Santa Lúcia", "code": "lc", "hints": ["É uma nação insular caribenha com montanhas vulcânicas e praias.", "Sua capital é Castries.", "Localiza-se no Caribe."], "curiosity": ["Você sabia? O design da bandeira de Santa Lúcia, com seus triângulos, representa as duas pitons vulcânicas icônicas da ilha, o Gros Piton e o Petit Piton.", "Você sabia? O azul simboliza a fidelidade e a esperança, e o dourado a riqueza do sol e da prosperidade."]},
+            { "name": "São Vicente e Granadinas", "code": "vc", "hints": ["É uma nação caribenha que inclui a ilha principal de São Vicente e as Granadinas.", "Sua capital é Kingstown.", "Localiza-se no Caribe."], "curiosity": ["Você sabia? Os três losangos na bandeira de São Vicente e Granadinas representam as jóias do Caribe e a diversidade da ilha.", "Você sabia? O azul, o amarelo e o verde representam o céu, o sol e a vegetação exuberante."]},
+            { "name": "Samoa", "code": "ws", "hints": ["É uma nação insular da Polinésia, com recifes de coral e florestas tropicais.", "Sua capital é Apia.", "Localiza-se na Oceania."], "curiosity": ["Você sabia? A Constelação do Cruzeiro do Sul na bandeira de Samoa é um símbolo comum em bandeiras do Hemisfério Sul e representa a orientação e a esperança.", "Você sabia? O vermelho simboliza a coragem, e o azul o céu e a liberdade."]},
+            { "name": "San Marino", "code": "sm", "hints": ["É um microestado montanhoso totalmente cercado pela Itália.", "Sua capital é Cidade de San Marino.", "Localiza-lse na Europa."], "curiosity": ["Você sabia? A bandeira de San Marino apresenta um brasão de armas com três torres que representam as três fortalezas no topo do Monte Titano.", "Você sabia? As cores branca e azul representam a paz e a liberdade."]},
+            { "name": "São Tomé e Príncipe", "code": "st", "hints": ["É uma nação insular africana no Golfo da Guiné, conhecida por seu cacau.", "Sua capital é São Tomé.", "Localiza-se na África."], "curiosity": ["Você sabia? As duas estrelas pretas na bandeira de São Tomé e Príncipe representam as duas principais ilhas do país.", "Você sabia? As cores verde, amarelo e vermelho são pan-africanas, e o triângulo vermelho representa o sangue derramado."]},
+            { "name": "Arábia Saudita", "code": "sa", "hints": ["É um reino desértico no Oriente Médio, berço do Islã.", "Sua capital é Riad.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? A escrita na bandeira da Arábia Saudita é a Shahada (profissão de fé islâmica), e a espada simboliza a justiça e a proteção.", "Você sabia? É uma das poucas bandeiras que não deve ser hasteada a meio mastro, em respeito à Shahada."]},
+            { "name": "Senegal", "code": "sn", "hints": ["É um país da África Ocidental conhecido por sua música e cultura vibrante.", "Sua capital é Dacar.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? A estrela verde na bandeira do Senegal simboliza esperança e unidade, e as cores são as pan-africanas.", "Você sabia? O verde representa a esperança e a fertilidade, o amarelo a riqueza e o vermelho o sacrifício."]},
+            { "name": "Sérvia", "code": "rs", "hints": ["É um país dos Balcãs com uma rica história e paisagens diversas.", "Sua capital é Belgrado.", "Localiza-se na Europa."], "curiosity": ["Você sabia? A águia bicéfala no brasão de armas da bandeira da Sérvia é um símbolo de sua rica história e do Império Bizantino.", "Você sabia? As cores vermelha, azul e branca são as cores pan-eslavas."]},
+            { "name": "Seicheles", "code": "sc", "hints": ["É um arquipélago no Oceano Índico, conhecido por suas praias e vida marinha.", "Sua capital é Victoria.", "Localiza-se na África."], "curiosity": ["Você sabia? As cinco faixas oblíquas na bandeira das Seicheles representam as diferentes cores das pessoas e da natureza do país.", "Você sabia? O azul simboliza o céu e o mar, o amarelo o sol, o vermelho o povo, o verde a terra e o branco a justiça."]},
+            { "name": "Serra Leoa", "code": "sl", "hints": ["É um país da África Ocidental conhecido por suas praias e diamantes.", "Sua capital é Freetown.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? As cores da bandeira de Serra Leoa (verde, branco e azul) representam a agricultura e as montanhas, a unidade e a justiça, e o Oceano Atlântico, respectivamente.", "Você sabia? O verde simboliza os recursos naturais, o branco a paz e o azul o oceano."]},
+            { "name": "Singapura", "code": "sg", "hints": ["É uma cidade-estado insular e nação do Sudeste Asiático.", "Sua capital é Singapura.", "Localiza-se no Sudeste Asiático."], "curiosity": ["Você sabia? O crescente e as cinco estrelas na bandeira de Singapura simbolizam uma nação jovem e em ascensão e os cinco ideais da democracia, paz, progresso, justiça e igualdade.", "Você sabia? O vermelho simboliza a irmandade universal e a igualdade do homem, e o branco a pureza e a virtude."]},
+            { "name": "Eslováquia", "code": "sk", "hints": ["É um país da Europa Central com montanhas e castelos medievais.", "Sua capital é Bratislava.", "Localiza-se na Europa."], "curiosity": ["Você sabia? O brasão de armas na bandeira da Eslováquia apresenta uma cruz dupla sobre três colinas, símbolos de sua herança cristã e paisagem.", "Você sabia? As cores branca, azul e vermelha são as cores pan-eslavas."]},
+            { "name": "Eslovênia", "code": "si", "hints": ["É um país da Europa Central com montanhas, lagos e uma costa curta no Adriático.", "Sua capital é Liubliana.", "Localiza-se na Europa."], "curiosity": ["Você sabia? O brasão de armas na bandeira da Eslovênia apresenta três picos de montanha, representando o Monte Triglav, o pico mais alto do país.", "Você sabia? As cores branca, azul e vermelha são as cores pan-eslavas e também estão presentes no brasão."]},
+            { "name": "Ilhas Salomão", "code": "sb", "hints": ["É uma nação insular na Oceania, a leste da Papua Nova Guiné.", "Sua capital é Honiara.", "Localiza-se na Oceania."], "curiosity": ["Você sabia? As cinco estrelas na bandeira das Ilhas Salomão representam as cinco principais ilhas do arquipélago.", "Você sabia? O azul simboliza o oceano, o verde a terra, e a faixa amarela o sol e a prosperidade."]},
+            { "name": "Somália", "code": "so", "hints": ["É um país do Chifre da África com a costa mais longa da África continental.", "Sua capital é Mogadíscio.", "Localiza-se na África."], "curiosity": ["Você sabia? A estrela branca de cinco pontas na bandeira da Somália representa as cinco regiões onde vivem os somalis.", "Você sabia? O azul-claro é a cor do céu e do Oceano Índico."]},
+            { "name": "Sudão do Sul", "code": "ss", "hints": ["É o país mais jovem do mundo, na África Oriental.", "Sua capital é Juba.", "Localiza-se na África Oriental."], "curiosity": ["Você sabia? As cores da bandeira do Sudão do Sul simbolizam o povo (preto), a paz (branco), o sangue (vermelho), a terra (verde) e o rio Nilo (azul), com uma estrela representando a unidade.", "Você sabia? O triângulo azul representa o rio Nilo, fonte de vida."]},
+            { "name": "Sri Lanka", "code": "lk", "hints": ["É uma nação insular no sul da Ásia, conhecida por suas praias e ruínas antigas.", "Sua capital é Sri Jayawardenepura Kotte.", "Localiza-se na Ásia."], "curiosity": ["Você sabia? O leão dourado com espada na bandeira do Sri Lanka representa a etnia cingalesa e a bravura da nação.", "Você sabia? As faixas verde e laranja representam as minorias muçulmanas e tâmeis, respectivamente."]},
+            { "name": "Sudão", "code": "sd", "hints": ["É um país do norte da África, com vastas extensões do Deserto do Saara.", "Sua capital é Cartum.", "Localiza-se no norte da África."], "curiosity": ["Você sabia? As cores da bandeira do Sudão são as cores pan-árabes e simbolizam a história e a luta do povo sudanês.", "Você sabia? O verde representa o Islã, a agricultura e a prosperidade."]},
+            { "name": "Suriname", "code": "sr", "hints": ["É um pequeno país na costa nordeste da América do Sul, com densa floresta tropical.", "Sua capital é Paramaribo.", "Localiza-se na América do Sul."], "curiosity": ["Você sabia? A estrela amarela na bandeira do Suriname simboliza a unidade dos povos do país e o futuro dourado.", "Você sabia? O verde representa as florestas e a agricultura, e o vermelho, a luta e o sacrifício."]},
+            { "name": "Síria", "code": "sy", "hints": ["É um país no Oriente Médio com uma rica história e ruínas antigas.", "Sua capital é Damasco.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? As duas estrelas verdes na bandeira da Síria representam os países que formaram a República Árabe Unida (Síria e Egito) e a esperança.", "Você sabia? As cores vermelha, branca e preta são as cores pan-árabes."]},
+            { "name": "Tajiquistão", "code": "tj", "hints": ["É um país sem litoral na Ásia Central, com montanhas e glaciares.", "Sua capital é Dushanbe.", "Localiza-se na Ásia Central."], "curiosity": ["Você sabia? A coroa e as sete estrelas na bandeira do Tajiquistão simbolizam a soberania e a felicidade do povo tajique.", "Você sabia? As cores vermelha, branca e verde representam a unidade, a pureza e a prosperidade."]},
+            { "name": "Tanzânia", "code": "tz", "hints": ["É um país da África Oriental, lar do Parque Nacional Serengeti e do Monte Kilimanjaro.", "Sua capital é Dodoma.", "Localiza-se na África Oriental."], "curiosity": ["Você sabia? A faixa diagonal preta na bandeira da Tanzânia representa o povo, enquanto o verde simboliza a vegetação e o azul a água.", "Você sabia? As faixas amarelas estreitas simbolizam a riqueza mineral do país."]},
+            { "name": "Togo", "code": "tg", "hints": ["É um pequeno país da África Ocidental com uma faixa costeira estreita no Golfo da Guiné.", "Sua capital é Lomé.", "Localiza-se na África Ocidental."], "curiosity": ["Você sabia? A estrela branca na bandeira de Togo simboliza a esperança e a pureza, e as cores são as pan-africanas.", "Você sabia? As cinco faixas horizontais representam as cinco regiões do país."]},
+            { "name": "Tonga", "code": "to", "hints": ["É um reino polinésio no Oceano Pacífico, com mais de 170 ilhas.", "Sua capital é Nukuʻalofa.", "Localiza-se na Oceania."], "curiosity": ["Você sabia? A bandeira de Tonga é uma das poucas bandeiras nacionais com uma representação da Cruz Vermelha, simbolizando o cristianismo.", "Você sabia? O branco simboliza a pureza e o vermelho o sangue de Cristo."]},
+            { "name": "Trinidad e Tobago", "code": "tt", "hints": ["É uma nação insular no Caribe, perto da costa da Venezuela.", "Sua capital é Porto de Espanha.", "Localiza-se no Caribe."], "curiosity": ["Você sabia? A faixa preta na bandeira de Trinidad e Tobago representa a dedicação do povo, e as bordas brancas, o mar e o sol.", "Você sabia? O vermelho simboliza o calor e a energia do sol e a coragem do povo."]},
+            { "name": "Tunísia", "code": "tn", "hints": ["É um país do norte da África, com uma costa no Mediterrâneo e ruínas romanas.", "Sua capital é Túnis.", "Localiza-se no norte da África."], "curiosity": ["Você sabia? A bandeira da Tunísia é inspirada na bandeira do Império Otomano e incorpora símbolos islâmicos.", "Você sabia? O crescente e a estrela vermelhos simbolizam o Islã e os cinco pilares da fé."]},
+            { "name": "Turcomenistão", "code": "tm", "hints": ["É um país da Ásia Central, com vastas áreas de deserto e o 'Portão do Inferno'.", "Sua capital é Asgabate.", "Localiza-se na Ásia Central."], "curiosity": ["Você sabia? A bandeira do Turcomenistão apresenta cinco padrões de tapete turcomeno, representando as cinco principais tribos do país.", "Você sabia? O crescente e as cinco estrelas representam o Islã e as cinco províncias (velayats)."]},
+            { "name": "Tuvalu", "code": "tv", "hints": ["É uma nação insular da Polinésia, formada por nove pequenos atóis.", "Sua capital é Funafuti.", "Localiza-se na Oceania."], "curiosity": ["Você sabia? As nove estrelas na bandeira de Tuvalu representam as nove ilhas habitadas do país.", "Você sabia? O fundo azul-claro representa o oceano que circunda as ilhas."]},
+            { "name": "Uganda", "code": "ug", "hints": ["É um país da África Oriental, lar de gorilas da montanha e do Lago Vitória.", "Sua capital é Kampala.", "Localiza-se na África Oriental."], "curiosity": ["Você sabia? O grou-coroado na bandeira de Uganda é o pássaro nacional e simboliza o progresso e o futuro do país.", "Você sabia? As cores preta, amarela e vermelha representam o povo africano, o sol e a fraternidade."]},
+            { "name": "Ucrânia", "code": "ua", "hints": ["É o segundo maior país da Europa em área, conhecido por suas planícies e história.", "Sua capital é Kiev.", "Localiza-se na Europa."], "curiosity": ["Você sabia? As cores da bandeira da Ucrânia (azul e amarelo) representam o céu azul sobre os campos de trigo dourados do país.", "Você sabia? A bandeira é um símbolo da identidade ucraniana desde o século XIX."]},
+            { "name": "Emirados Árabes Unidos", "code": "ae", "hints": ["É uma federação de sete emirados no Golfo Pérsico, conhecida por seu luxo.", "Sua capital é Abu Dhabi.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? As cores pan-árabes na bandeira dos Emirados Árabes Unidos simbolizam a unidade árabe, enquanto a faixa vertical vermelha representa a soberania do estado.", "Você sabia? O verde simboliza a fertilidade da terra, e o branco a paz."]},
+            { "name": "Uruguai", "code": "uy", "hints": ["É um pequeno país da América do Sul, conhecido por suas praias e campos.", "Sua capital é Montevidéu.", "Localiza-se na América do Sul."], "curiosity": ["Você sabia? O 'Sol de Maio' na bandeira do Uruguai simboliza a independência e é compartilhado com a bandeira da Argentina.", "Você sabia? As nove listras horizontais representam os nove departamentos originais do Uruguai."]},
+            { "name": "Uzbequistão", "code": "uz", "hints": ["É um país sem litoral na Ásia Central, na antiga Rota da Seda.", "Sua capital é Tashkent.", "Localiza-se na Ásia Central."], "curiosity": ["Você sabia? As 12 estrelas na bandeira do Uzbequistão representam os 12 oblasts (regiões) do país, e o crescente, o Islã.", "Você sabia? O crescente simboliza o Islã e as 12 estrelas representam o calendário islâmico."]},
+            { "name": "Vanuatu", "code": "vu", "hints": ["É uma nação insular da Melanésia, conhecida por seus recifes e vulcões subaquáticos.", "Sua capital é Port Vila.", "Localiza-lo na Oceania."], "curiosity": ["Você sabia? A presa de javali e as folhas de namale na bandeira de Vanuatu são símbolos tradicionais de prosperidade e paz.", "Você sabia? O Y preto simboliza a forma das ilhas do país, e o vermelho, o sangue dos antepassados."]},
+            { "name": "Iêmen", "code": "ye", "hints": ["É um país do Oriente Médio na ponta sul da Península Árabica.", "Sua capital é Sana'a.", "Localiza-se no Oriente Médio."], "curiosity": ["Você sabia? As cores da bandeira do Iêmen (vermelho, branco e preto) são as cores pan-árabes, representando o sangue derramado, a paz e a escuridão dos tempos passados, respectivamente.", "Você sabia? Esta bandeira foi adotada após a unificação do Iêmen do Norte e do Iêmen do Sul em 1990."]},
+            { "name": "Zâmbia", "code": "zm", "hints": ["É um país sem litoral da África Austral, lar das Cataratas Vitória.", "Sua capital é Lusaca.", "Localiza-se na África Austral."], "curiosity": ["Você sabia? A águia-pescadora africana na bandeira da Zâmbia simboliza a capacidade do país de superar seus problemas.", "Você sabia? O verde representa a rica flora do país e o vermelho, a luta pela liberdade."]},
+            { "name": "Zimbábue", "code": "zw", "hints": ["É um país sem litoral da África Austral, conhecido por sua vida selvagem.", "Sua capital é Harare.", "Localiza-se na África Austral."], "curiosity": ["Você sabia? O pássaro do Zimbábue na bandeira é um artefato antigo descoberto nas ruínas do Grande Zimbábue e é um símbolo nacional.", "Você sabia? As cores na bandeira representam os recursos naturais, a paz e o sangue derramado."]}
+        ];
+
+        let shuffledCountries = [];
+        let currentCountryIndex = 0;
+        let revealedHints = 0; // Quantidade de dicas reveladas para a bandeira atual
+
+        const flagImage = document.getElementById('flag-image');
+        const hintDisplay = document.getElementById('hint-display');
+        const curiosityDisplay = document.getElementById('curiosity-display'); // Novo elemento de curiosidade
+        const guessInput = document.getElementById('guess-input');
+        const hint1Btn = document.getElementById('hint1-btn');
+        const hint2Btn = document.getElementById('hint2-btn');
+        const hint3Btn = document.getElementById('hint3-btn');
+        const guessBtn = document.getElementById('guess-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const currentFlagNumberSpan = document.getElementById('current-flag-number');
+        const totalFlagsNumberSpan = document.getElementById('total-flags-number');
+
+        /**
+         * Embaralha um array usando o algoritmo Fisher-Yates (Knuth shuffle).
+         * @param {Array} array - O array a ser embaralhado.
+         * @returns {Array} O array embaralhado.
+         */
+        function shuffleArray(array) {
+            let currentIndex = array.length, randomIndex;
+            // Enquanto houver elementos para embaralhar.
+            while (currentIndex !== 0) {
+                // Seleciona um elemento restante.
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                // E troca-o com o elemento atual.
+                [array[currentIndex], array[randomIndex]] = [
+                    array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        /**
+         * Exibe a bandeira atual e reseta o estado do jogo.
+         */
+        function displayFlag() {
+            // Atualiza o status da bandeira
+            currentFlagNumberSpan.textContent = currentCountryIndex + 1;
+            totalFlagsNumberSpan.textContent = shuffledCountries.length;
+
+            if (currentCountryIndex >= shuffledCountries.length) {
+                // Se todas as bandeiras foram exibidas, embaralha novamente e reinicia.
+                alert("Você adivinhou todas as bandeiras! Reiniciando o jogo com uma nova ordem.");
+                shuffledCountries = shuffleArray([...all_un_member_states]); // Embaralha a cópia do array original
+                currentCountryIndex = 0;
+                 // Atualiza o status da bandeira novamente após reiniciar
+                currentFlagNumberSpan.textContent = currentCountryIndex + 1;
+                totalFlagsNumberSpan.textContent = shuffledCountries.length;
+            }
+
+            const country = shuffledCountries[currentCountryIndex];
+            flagImage.src = `https://flagcdn.com/${country.code}.svg`; // Usa o código ISO para a bandeira
+            flagImage.alt = `Bandeira de ${country.name}`; // Melhorar acessibilidade
+
+            // Adiciona um manipulador de erro para imagens que falham ao carregar
+            flagImage.onerror = () => {
+                flagImage.src = "https://placehold.co/400x250/cccccc/000000?text=Erro+Carregamento+Bandeira";
+                flagImage.alt = "Erro ao carregar a imagem da bandeira";
+            };
+
+            hintDisplay.textContent = "Sua dica aparecerá aqui.";
+            hintDisplay.classList.remove('visible'); // Esconde a dica
+            curiosityDisplay.textContent = "Você sabia?"; // Reseta o texto da curiosidade
+            curiosityDisplay.classList.remove('visible'); // Esconde a curiosidade
+
+            guessInput.value = ''; // Limpa o input
+            feedbackMessage.textContent = ''; // Limpa o feedback
+            feedbackMessage.classList.remove('visible', 'feedback-correct', 'feedback-incorrect');
+
+            revealedHints = 0; // Reseta as dicas reveladas
+            hint1Btn.disabled = false;
+            hint2Btn.disabled = false;
+            hint3Btn.disabled = false;
+            guessBtn.disabled = false; // Habilita o botão de adivinhar
+
+            // Reabilita todos os botões de dica
+            hint1Btn.classList.remove('opacity-60', 'cursor-not-allowed');
+            hint2Btn.classList.remove('opacity-60', 'cursor-not-allowed');
+            hint3Btn.classList.remove('opacity-60', 'cursor-not-allowed');
+            guessBtn.classList.remove('opacity-60', 'cursor-not-allowed');
+        }
+
+        /**
+         * Mostra uma dica específica com base no nível.
+         * @param {number} level - O nível da dica (0 para difícil, 1 para média, 2 para simples).
+         */
+        function showHint(level) {
+            const country = shuffledCountries[currentCountryIndex];
+            if (level < country.hints.length) {
+                hintDisplay.textContent = country.hints[level];
+                hintDisplay.classList.add('visible'); // Mostra a dica
+                revealedHints = Math.max(revealedHints, level + 1); // Garante que as dicas anteriores também sejam contadas
+
+                // Desabilitar o botão da dica que foi usada e aplicar estilo de desabilitado
+                if (level === 0) {
+                    hint1Btn.disabled = true;
+                    hint1Btn.classList.add('opacity-60', 'cursor-not-allowed');
+                }
+                if (level === 1) {
+                    hint2Btn.disabled = true;
+                    hint2Btn.classList.add('opacity-60', 'cursor-not-allowed');
+                }
+                if (level === 2) {
+                    hint3Btn.disabled = true;
+                    hint3Btn.classList.add('opacity-60', 'cursor-not-allowed');
+                }
+            } else {
+                console.log("Não há mais dicas para este nível.");
+            }
+        }
+
+        /**
+         * Verifica o palpite do usuário.
+         */
+        function checkGuess() {
+            const userGuess = guessInput.value.trim().toLowerCase();
+            // A normalização remove acentos e caracteres especiais para comparação
+            const normalizeString = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+            const correctNameNormalized = normalizeString(shuffledCountries[currentCountryIndex].name);
+            const userGuessNormalized = normalizeString(userGuess);
+
+            feedbackMessage.classList.remove('feedback-correct', 'feedback-incorrect'); // Limpa classes anteriores
+
+            if (userGuessNormalized === correctNameNormalized) {
+                feedbackMessage.textContent = `Correto! É ${shuffledCountries[currentCountryIndex].name}!`;
+                feedbackMessage.classList.add('feedback-correct', 'visible');
+
+                // Exibe a curiosidade (agora escolhe uma aleatoriamente do array)
+                const country = shuffledCountries[currentCountryIndex];
+                if (country.curiosity && country.curiosity.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * country.curiosity.length);
+                    curiosityDisplay.textContent = country.curiosity[randomIndex];
+                    curiosityDisplay.classList.add('visible');
+                } else {
+                    curiosityDisplay.textContent = "Você sabia? Não temos uma curiosidade específica para esta bandeira ainda!";
+                    curiosityDisplay.classList.add('visible');
+                }
+
+                guessBtn.disabled = true; // Desabilita o botão de adivinhar após acertar
+                guessBtn.classList.add('opacity-60', 'cursor-not-allowed');
+                // Desabilita todos os botões de dica
+                hint1Btn.disabled = true;
+                hint2Btn.disabled = true;
+                hint3Btn.disabled = true;
+                hint1Btn.classList.add('opacity-60', 'cursor-not-allowed');
+                hint2Btn.classList.add('opacity-60', 'cursor-not-allowed');
+                hint3Btn.classList.add('opacity-60', 'cursor-not-allowed');
+            } else {
+                feedbackMessage.textContent = `Ops! "${userGuess}" está incorreto. Tente novamente.`;
+                feedbackMessage.classList.add('feedback-incorrect', 'visible');
+            }
+        }
+
+        /**
+         * Avança para a próxima bandeira.
+         */
+        function nextFlag() {
+            currentCountryIndex++;
+            displayFlag();
+        }
+
+        // Adiciona event listeners para os botões
+        hint1Btn.addEventListener('click', () => showHint(0)); // Dica difícil
+        hint2Btn.addEventListener('click', () => showHint(1)); // Dica média
+        hint3Btn.addEventListener('click', () => showHint(2)); // Dica simples
+        guessBtn.addEventListener('click', checkGuess);
+        nextBtn.addEventListener('click', nextFlag);
+
+        // Permite adivinhar pressionando Enter no campo de texto
+        guessInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                checkGuess();
+            }
+        });
+
+        // Inicializa o jogo ao carregar a página
+        window.onload = () => {
+            shuffledCountries = shuffleArray([...all_un_member_states]); // Embaralha a lista no início
+            displayFlag();
+        };
+    </script>
+</body>
+</html>
