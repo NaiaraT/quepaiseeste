@@ -465,7 +465,8 @@
             }
 
             const country = shuffledCountries[currentCountryIndex];
-            const flagUrl = `https://flagcdn.com/${country.code}.svg`;
+            // Adiciona um parâmetro de cache busting para forçar o recarregamento da imagem
+            const flagUrl = `https://flagcdn.com/${country.code}.svg?cachebust=${new Date().getTime()}`;
             flagImage.src = flagUrl; // Usa o código ISO para a bandeira
             flagImage.alt = `Bandeira de ${country.name}`; // Melhorar acessibilidade
 
@@ -474,7 +475,7 @@
 
             // Adiciona um manipulador de erro para imagens que falham ao carregar
             flagImage.onerror = () => {
-                console.error(`Erro ao carregar a bandeira para ${country.name} (${flagUrl})`);
+                console.error(`Erro ao carregar a bandeira para ${country.name} (${flagUrl}). Exibindo imagem de fallback.`);
                 flagImage.src = "https://placehold.co/400x250/cccccc/000000?text=Erro+Carregamento+Bandeira";
                 flagImage.alt = "Erro ao carregar a imagem da bandeira";
             };
@@ -624,3 +625,4 @@
     </script>
 </body>
 </html>
+
