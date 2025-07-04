@@ -194,7 +194,7 @@
         <div class="flex flex-col sm:flex-row justify-center gap-4 mt-4">
             <button id="hint1-btn" class="button button-secondary">Dica 1 (Difícil)</button>
             <button id="hint2-btn" class="button button-secondary">Dica 2 (Média)</button>
-            <button id="hint3-btn" class="button button-secondary">Dica 3 (Simples)</button>
+            <button id="hint3-btn" class="button button-secondary">Dica 3 (Fácil)</button>
         </div>
 
         <div class="flex flex-col sm:flex-row justify-center gap-4 mt-4">
@@ -504,7 +504,7 @@
 
         /**
          * Mostra uma dica específica com base no nível.
-         * @param {number} level - O nível da dica (0 para difícil, 1 para média, 2 para simples).
+         * @param {number} level - O nível da dica (0 para difícil, 1 para média, 2 para fácil).
          */
         function showHint(level) {
             const country = shuffledCountries[currentCountryIndex];
@@ -606,7 +606,7 @@
         // Adiciona event listeners para os botões
         hint1Btn.addEventListener('click', () => showHint(0)); // Dica difícil
         hint2Btn.addEventListener('click', () => showHint(1)); // Dica média
-        hint3Btn.addEventListener('click', () => showHint(2)); // Dica simples
+        hint3Btn.addEventListener('click', () => showHint(2)); // Dica fácil
         guessBtn.addEventListener('click', checkGuess);
         nextBtn.addEventListener('click', nextFlag);
 
